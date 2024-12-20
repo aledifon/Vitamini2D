@@ -181,7 +181,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 6.5
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -206,11 +206,11 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3.55, y: 1.2546324, z: -22.339912}
+  m_LocalPosition: {x: 1.9091387, y: 2.2, z: -12.134909}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1427650238}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &824247597
 GameObject:
@@ -223,7 +223,7 @@ GameObject:
   - component: {fileID: 824247599}
   - component: {fileID: 824247598}
   m_Layer: 0
-  m_Name: NotWalkableGrid
+  m_Name: WalkableGrid
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -269,7 +269,7 @@ GameObject:
   - component: {fileID: 844665772}
   - component: {fileID: 844665771}
   m_Layer: 0
-  m_Name: WalkableEnvironment
+  m_Name: NotWalkableEnvironment
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -391,8 +391,8 @@ GameObject:
   - component: {fileID: 999481473}
   - component: {fileID: 999481472}
   - component: {fileID: 999481471}
-  m_Layer: 0
-  m_Name: NotWalkableEnvironment
+  m_Layer: 3
+  m_Name: WalkableEnvironment
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9953,10 +9953,12 @@ Transform:
   m_GameObject: {fileID: 1427650236}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.77, y: -0.74, z: 0}
+  m_LocalPosition: {x: 1.77, y: -0.789, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 2030953632}
+  - {fileID: 519420032}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!58 &1427650239
@@ -10036,6 +10038,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 10
   smoothTime: 0.35
+  jumpForce: 500
+  jumpPressed: 0
+  groundCheck: {fileID: 2030953632}
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  rayLength: 0.2
+  isGrounded: 0
 --- !u!95 &1427650242
 Animator:
   serializedVersion: 7
@@ -10069,7 +10079,7 @@ GameObject:
   - component: {fileID: 1441025909}
   - component: {fileID: 1441025908}
   m_Layer: 0
-  m_Name: WalkableGrid
+  m_Name: NotWalkableGrid
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10103,11 +10113,41 @@ Transform:
   - {fileID: 844665770}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2030953631
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2030953632}
+  m_Layer: 0
+  m_Name: GroundCheck
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2030953632
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2030953631}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -1.138, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1427650238}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 519420032}
   - {fileID: 824247599}
   - {fileID: 1441025909}
   - {fileID: 1427650238}

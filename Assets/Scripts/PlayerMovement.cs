@@ -9,6 +9,16 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float speed;
     [SerializeField] float smoothTime; // time will takes to reach the speed.
 
+    [Header("Jump")]
+    [SerializeField] float jumpForce;       // Jumping applied Force
+    [SerializeField] bool jumpPressed;       // Jumping applied Force
+
+    [Header("Raycast")]
+    [SerializeField] Transform groundCheck;  //Raycast origin point (Vitamini feet)
+    [SerializeField] LayerMask groundLayer;  //Ground Layer
+    [SerializeField] float rayLength;       //Raycast Length
+    [SerializeField] bool isGrounded;       //Ground touching flag
+
     // Movement vars.
     float horizontal;
     Vector2 inputPlayerVelocity;    // Velocity given by the player's input
@@ -30,9 +40,17 @@ public class PlayerMovement : MonoBehaviour
     {
         InputPlayer();
 
+        // Launch raycast
+        RaycastGrounded();
+
         // Update the target Velocity
         targetVelocity = new Vector2(horizontal * speed, rb2D.velocity.y);
 
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+            jumpPressed = true;
+
+        // Update the player's gravity when falling down
+        ChangeGravity();
         // Flip the player sprite
         FlipSprite(horizontal);
         // Change the animations State
@@ -46,10 +64,33 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         UpdateMovement();
+        if (jumpPressed)
+            Jump();        
     }
     void InputPlayer()
     {
         horizontal = Input.GetAxis("Horizontal");
+    }
+    void RaycastGrounded()
+    {
+        // Raycast Launching
+        isGrounded = Physics2D.Raycast(groundCheck.position, Vector2.down,rayLength, groundLayer);
+        // Raycast Debugging
+        Debug.DrawRay(groundCheck.position,Vector2.down*rayLength,Color.red);
+    }
+    // Player jump handling
+    void Jump()
+    {
+        jumpPressed = false;
+        rb2D.AddForce(Vector2.up*jumpForce);
+    }
+    private void ChangeGravity()
+    {
+        // Gravity will be heavier when the player is falling down
+        if(rb2D.velocity.y<0)
+            rb2D.gravityScale = 2.5f;
+        else
+            rb2D.gravityScale = 1;
     }
     void UpdateMovement()
     {                
@@ -71,5 +112,7 @@ public class PlayerMovement : MonoBehaviour
     private void Animating(float horizontal)
     {        
         animator.SetBool("IsRunning", horizontal != 0);
-    }
+
+        animator.SetBool("IsJumping",!isGrounded);
+    }    
 }
