@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -19,6 +21,10 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float rayLength;       //Raycast Length
     [SerializeField] bool isGrounded;       //Ground touching flag
 
+    // UI
+    private float acornCounter;
+    [SerializeField] private TextMeshProUGUI acornCounterTextUI;
+
     // Movement vars.
     float horizontal;
     Vector2 inputPlayerVelocity;    // Velocity given by the player's input
@@ -35,6 +41,9 @@ public class PlayerMovement : MonoBehaviour
         rb2D = GetComponent<Rigidbody2D>();   
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
+
+        acornCounter = 0;
+        acornCounterTextUI.text = acornCounter.ToString();
     }
     private void Update()
     {
@@ -114,5 +123,19 @@ public class PlayerMovement : MonoBehaviour
         animator.SetBool("IsRunning", horizontal != 0);
 
         animator.SetBool("IsJumping",!isGrounded);
-    }    
+    }
+
+    // Collisions
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.collider.CompareTag("Acorn"))
+        {
+            // Acorn dissappear
+            Destroy(collision.collider.gameObject);
+            // Increase Acorn counter
+            acornCounter++;
+            // Update Acorn counter UI Text
+            acornCounterTextUI.text = acornCounter.ToString();
+        }
+    }
 }
