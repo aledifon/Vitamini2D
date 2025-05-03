@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="PlayerMovement">
+    <Position X="0.5" Y="0.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>hAQAAECIMgAAACAAAABACAAEATAAAUAIAkAwCCCAAEA=</HashCode>
+      <FileName>Assets\Scripts\PlayerMovement.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="EnemyMovement">
+    <Position X="4.25" Y="0.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAQAEAuAAgAAACAAgAAAAAAAACAICBAQAQIASAAAAEA=</HashCode>
+      <FileName>Assets\Scripts\EnemyMovement.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CameraFollow">
+    <Position X="7.25" Y="0.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAiAAAAAAAAAAAAAAAAAAAAEBAAAAAQAAAAA=</HashCode>
+      <FileName>Assets\Scripts\CameraFollow.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
