@@ -2,8 +2,15 @@
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="PlayerMovement">
     <Position X="0.5" Y="0.75" Width="2" />
+    <NestedTypes>
+      <Enum Name="PlayerMovement.CornerDetected" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Assets\Scripts\PlayerMovement.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
     <TypeIdentifier>
-      <HashCode>hAQAAECIMgAAACAAAABACAAEATAAAUAIAkAwCCCAAEA=</HashCode>
+      <HashCode>hgYAgECAIhIgYSIAgCBAAAAEA6AAAUAJAgCwCCiAAGA=</HashCode>
       <FileName>Assets\Scripts\PlayerMovement.cs</FileName>
     </TypeIdentifier>
   </Class>

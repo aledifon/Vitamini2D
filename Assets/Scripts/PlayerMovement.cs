@@ -25,12 +25,28 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] LayerMask elevatorLayer;
 
     [Header("Raycast")]
+    // Raycast Ground check
     [SerializeField] Transform[] groundChecks;  //Raycast origin point (Vitamini feet)
     [SerializeField] LayerMask groundLayer;  //Ground Layer
     [SerializeField] float rayLength;       //Raycast Length
     [SerializeField] bool isGrounded;       //Ground touching flag
     private bool wasGrounded;               //isGrounded value of previous frame
-       
+
+    // Raycast Corner checks
+    [SerializeField] Transform cornerLeftCheck;   //Raycast origin point (Vitamini feet)
+    [SerializeField] Transform cornerRightCheck;  //Raycast origin point (Vitamini feet)
+    [SerializeField] float rayCornerLength;     //Raycast Corner Length
+    //[SerializeField] bool cornerDetected;       //Corner detection flag
+
+    private enum CornerDetected
+    {
+        NoCeiling,
+        Ceiling,
+        CornerLeft,
+        CornerRight,
+    }
+    [SerializeField] private CornerDetected cornerDetected = CornerDetected.NoCeiling;
+
     // GO Components
     Rigidbody2D rb2D;
     // Movement vars.
@@ -70,6 +86,8 @@ public class PlayerMovement : MonoBehaviour
         ChangeGravity();
         // Launch the raycast to detect the ground
         RaycastGrounded();
+        // Launch the raycast to detect the ceiling
+        RaycastCeiling();
         // Controls if the player is on the elevator
         //Elevator();
 
@@ -131,6 +149,30 @@ public class PlayerMovement : MonoBehaviour
         foreach(Transform groundCheck in groundChecks)
             Debug.DrawRay(groundCheck.position,Vector2.down*rayLength,Color.red);        
     }
+    void RaycastCeiling()
+    {
+        // Raycast Launching
+        RaycastHit2D raycastCornerLeft;        
+        RaycastHit2D raycastCornerRight;        
+
+        //cornerDetected = false;        
+        raycastCornerLeft = Physics2D.Raycast(cornerLeftCheck.position, Vector2.up, rayCornerLength, groundLayer);
+        raycastCornerRight = Physics2D.Raycast(cornerRightCheck.position, Vector2.up, rayCornerLength, groundLayer);
+
+        // Update the corner detection
+        if (raycastCornerLeft && raycastCornerRight)       
+            cornerDetected = CornerDetected.Ceiling;        
+        else if (!raycastCornerLeft && raycastCornerRight)        
+            cornerDetected = CornerDetected.CornerLeft;        
+        else if (raycastCornerLeft && !raycastCornerRight)        
+            cornerDetected = CornerDetected.CornerRight;        
+        else        
+            cornerDetected = CornerDetected.NoCeiling;
+        
+        // Raycast Debugging        
+        Debug.DrawRay(cornerLeftCheck.position, Vector2.up * rayCornerLength, Color.green);
+        Debug.DrawRay(cornerRightCheck.position, Vector2.up * rayCornerLength, Color.green);
+    }
     #endregion
 
     #region Coyote Time
@@ -181,6 +223,13 @@ public class PlayerMovement : MonoBehaviour
     void Jump()
     {
         canJump = false;
+
+        // Fix Player's position due to corner detection
+        if (cornerDetected == CornerDetected.CornerLeft)
+            transform.position -= new Vector3(0.5f, 0f);
+        else if (cornerDetected == CornerDetected.CornerRight)
+            transform.position += new Vector3(-0.5f, 0f);
+
         // Jumping force through Add Force
         //rb2D.AddForce(Vector2.up*jumpForce);
 
