@@ -14,7 +14,14 @@ public class PlayerMovement : MonoBehaviour
     [Header("Jump")]
     [SerializeField] float jumpForce;       // Jumping applied Force
     [SerializeField] float jumpSpeed;       // Jumping applied Force
-    [SerializeField] bool canJump;       // Jumping applied Force
+    [SerializeField] bool jumpTriggered;       // Jumping applied Force
+
+    [SerializeField] float minJumpDist;     // Min. Jumping Dist. Uds.
+    [SerializeField] float maxJumpDist;     // Min. Jumping Dist. Uds.    
+    [SerializeField] float jumpingTimer;    // Jumping Timer
+    private float minJumpingTime;           // Min & Max Jumping Times (in func. of Jumping distance. & Jump. speed)                                            
+    private float maxJumpingTime;
+    private bool jumpPressed;
     
     // UI
     [Header("Acorn")]
@@ -36,8 +43,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] Transform cornerLeftCheck;   //Raycast origin point (Vitamini feet)
     [SerializeField] Transform cornerRightCheck;  //Raycast origin point (Vitamini feet)
     [SerializeField] float rayCornerLength;     //Raycast Corner Length
-    //[SerializeField] bool cornerDetected;       //Corner detection flag
+                                                //[SerializeField] bool cornerDetected;       //Corner detection flag
 
+    #region Enums
     private enum CornerDetected
     {
         NoCeiling,
@@ -46,6 +54,18 @@ public class PlayerMovement : MonoBehaviour
         CornerRight,
     }
     [SerializeField] private CornerDetected cornerDetected = CornerDetected.NoCeiling;
+    // Define Character States
+    public enum PlayerState
+    {
+        Idle,
+        Running,
+        Jumping,
+        Falling,
+        Swinging,
+        Hurting
+    }
+    [SerializeField] private PlayerState currentState = PlayerState.Idle;
+    #endregion
 
     // GO Components
     Rigidbody2D rb2D;
@@ -55,6 +75,10 @@ public class PlayerMovement : MonoBehaviour
     Vector2 targetVelocity;          // Desired target player Speed(Velocity Movement type through rb2D)
     Vector2 dampVelocity;            // Player's current speed storage (Velocity Movement type through r
     Vector2 direction;              // To handle the direction with the New Input System
+
+    Vector2 playerDirVelocity;
+    Vector2 playerJumpVelocity;
+    float rb2DJumpVelY;
 
     // GO Components
     SpriteRenderer spriteRenderer;
@@ -81,7 +105,10 @@ public class PlayerMovement : MonoBehaviour
         textAcornUI.text = numAcorn.ToString();
     }
     private void Update()
-    {        
+    {
+        // Update the player state
+        UpdatePlayerState();
+
         // Update the player's gravity when falling down
         ChangeGravity();
         // Launch the raycast to detect the ground
@@ -110,8 +137,11 @@ public class PlayerMovement : MonoBehaviour
     }
     void FixedUpdate()
     {        
-        if (canJump)
-            Jump();
+        if (jumpTriggered)
+            JumpTrigger();
+
+        if (currentState == PlayerState.Jumping)
+            UpdateJumpMovement();
 
         UpdateMovement();
     }
@@ -128,6 +158,53 @@ public class PlayerMovement : MonoBehaviour
             textAcornUI.text = numAcorn.ToString();
         }
     }
+    #endregion
+
+    #region Player State
+    // Player State
+    private void UpdatePlayerState()
+    {
+        switch (currentState)
+        {
+            case PlayerState.Idle:
+                if (isGrounded && direction.x != 0)
+                    currentState = PlayerState.Running;
+                //else if (!isGrounded && rb2D.velocity.y > 0)
+                else if (jumpTriggered)
+                    currentState = PlayerState.Jumping;
+                else if (!isGrounded && rb2D.velocity.y < 0)
+                    currentState = PlayerState.Falling;
+                break;
+            case PlayerState.Running:
+                if (isGrounded && direction.x == 0)
+                    currentState = PlayerState.Idle;
+                //else if (!isGrounded && rb2D.velocity.y > 0)
+                else if (jumpTriggered)
+                    currentState = PlayerState.Jumping;
+                else if (!isGrounded && rb2D.velocity.y < 0)
+                    currentState = PlayerState.Falling;
+                break;
+            case PlayerState.Jumping:
+            case PlayerState.Falling:
+                if ((isGrounded && !jumpPressed) && direction.x == 0)
+                    currentState = PlayerState.Idle;
+                else if ((isGrounded && !jumpPressed) && direction.x != 0)
+                    currentState = PlayerState.Running;
+                //if (!isGrounded && rb2D.velocity.y > 0)
+                else if (jumpTriggered)
+                    currentState = PlayerState.Jumping;
+                if (!isGrounded && rb2D.velocity.y < 0)
+                    currentState = PlayerState.Falling;                
+                break;            
+            default:
+                // Default logic
+                break;
+        }
+
+        // From any State
+        // TO-DO
+    }
+    //////////////////////////////////////////////////
     #endregion
 
     #region Raycast
@@ -208,8 +285,17 @@ public class PlayerMovement : MonoBehaviour
     {
         if (context.phase == InputActionPhase.Performed && (isGrounded || coyoteTimerEnabled))
         {
-            canJump = true;
+            jumpTriggered = true;
+            jumpPressed = true;
+            jumpingTimer = 0;   
+            Debug.Log("Jump triggered");
         }        
+
+        if(context.phase == InputActionPhase.Canceled)
+        {
+            jumpPressed = false;
+            Debug.Log("Jump canceled");
+        }            
     }
     public void MoveActionInput(InputAction.CallbackContext context)
     {
@@ -220,28 +306,107 @@ public class PlayerMovement : MonoBehaviour
         AnimatingRunning(direction.x);
     }
     // Player jump handling
-    void Jump()
+    void JumpTrigger()
     {
-        canJump = false;
+        jumpTriggered = false;
 
         // Fix Player's position due to corner detection
         if (cornerDetected == CornerDetected.CornerLeft)
-            transform.position -= new Vector3(0.5f, 0f);
+            transform.position -= new Vector3(0.7f, 0f);
         else if (cornerDetected == CornerDetected.CornerRight)
-            transform.position += new Vector3(-0.5f, 0f);
+            transform.position += new Vector3(0.7f, 0f);
+
+        CalculateJumpTimes();
+    }
+    void CalculateJumpTimes()
+    {
+        // Solve the MRUA equation--> h = v0*t - (1/2)g*(t^2);
+
+        float discrimMinJumpTime = Mathf.Pow(jumpSpeed, 2) - 2 * Physics2D.gravity.y * minJumpDist;
+        float discrimMaxJumpTime = Mathf.Pow(jumpSpeed, 2) - 2 * Physics2D.gravity.y * maxJumpDist;
+
+        if (discrimMinJumpTime >= 0)
+            minJumpingTime = (jumpSpeed - Mathf.Sqrt(discrimMinJumpTime)) / Physics2D.gravity.y;
+        else
+            // Jumping not posible, not enought initial speed
+            Debug.LogError("The jumping is not posible with the initial speed and desired height");
+
+        if (discrimMaxJumpTime >= 0)
+            maxJumpingTime = (jumpSpeed - Mathf.Sqrt(discrimMaxJumpTime)) / Physics2D.gravity.y;
+        else
+            // Jumping not posible, not enought initial speed
+            Debug.LogError("The jumping is not posible with the initial speed and desired height");
+
+        // Max Jumping Time Correction
+        maxJumpingTime += 0.03f;
+    }
+    
+    void UpdateJumpMovement()
+    {        
+        jumpingTimer += Time.fixedDeltaTime;
+        
+        // Jump button released and elapsed min Time
+        if (jumpingTimer >= minJumpingTime)
+        {            
+            // Stop giving jump speed;            
+            if (!jumpPressed || jumpingTimer >= maxJumpingTime)
+            {
+                rb2DJumpVelY *= 0.5f;
+            }
+            else
+                rb2DJumpVelY = Vector2.up.y * jumpSpeed;
+        }
+        else
+        {
+            // Jumping force through velocity
+            rb2DJumpVelY = Vector2.up.y * jumpSpeed;
+            //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+        }
+
+        if (jumpingTimer >= maxJumpingTime)
+            Debug.Log("Max time elapsed");
+
 
         // Jumping force through Add Force
         //rb2D.AddForce(Vector2.up*jumpForce);
 
-        // Jumping force through velocity
-        float rb2DJumpVelY = Vector2.up.y * jumpSpeed;
-        rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+        // Calculate the Player's Jump Speed component
+        playerJumpVelocity = new Vector2(0, rb2DJumpVelY);
     }
     void UpdateMovement()
     {
-        targetVelocity = new Vector2(direction.x * speed, rb2D.velocity.y);
-        // Applies the correspondent new velocity        
-        rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);        
+        //targetVelocity = new Vector2(direction.x * speed, rb2D.velocity.y);
+        playerDirVelocity = new Vector2(direction.x * speed, 0);
+
+        switch (currentState)
+        {
+            case PlayerState.Idle:
+            case PlayerState.Running:
+                targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
+                break;
+            case PlayerState.Jumping:
+                playerDirVelocity *= 0.8f;
+                targetVelocity = new Vector2(playerDirVelocity.x, playerJumpVelocity.y);
+                break;
+            case PlayerState.Falling:
+                playerDirVelocity *= 0.8f;
+                targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
+                break;
+        }
+
+        // Updates the correspondent new velocity                
+        if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
+        {
+            // Don't smooth the Y-axis while jumping
+            rb2D.velocity = new Vector2(
+                            Mathf.SmoothDamp(rb2D.velocity.x, targetVelocity.x, ref dampVelocity.x, smoothTime),
+                            targetVelocity.y);
+        }
+        else
+        {
+            // Smooth both axis on normal states
+            rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);
+        }
     }
     private void ChangeGravity()
     {
@@ -249,7 +414,7 @@ public class PlayerMovement : MonoBehaviour
         if (rb2D.velocity.y < 0)
             rb2D.gravityScale = 2.5f;
         else
-            rb2D.gravityScale = 1;
+            rb2D.gravityScale = 1f;
     }
     #endregion    
 
@@ -257,9 +422,9 @@ public class PlayerMovement : MonoBehaviour
     // Flip the Player sprite in function of its movement
     void FlipSprite(float horizontal)
     {
-        if (horizontal < 0 && rb2D.velocity.x < 0)
+        if (horizontal < 0 /*&& rb2D.velocity.x < 0*/)
             spriteRenderer.flipX = true;
-        else if (horizontal > 0 && rb2D.velocity.x > 0)
+        else if (horizontal > 0 /*&& rb2D.velocity.x > 0*/)
             spriteRenderer.flipX = false;              
     }
     //void UpdateBoxCollider()

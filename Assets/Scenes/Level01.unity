@@ -269,7 +269,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 9.53, y: 2.98, z: -12.134909}
+  m_LocalPosition: {x: 16.4, y: 2.14, z: -12.134909}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10818,7 +10818,7 @@ CircleCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1427650236}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -10890,7 +10890,10 @@ MonoBehaviour:
   smoothTime: 0.35
   jumpForce: 450
   jumpSpeed: 10
-  canJump: 0
+  jumpTriggered: 0
+  minJumpDist: 3.7
+  maxJumpDist: 4.7
+  jumpingTimer: 0
   textAcornUI: {fileID: 1428549074}
   elevatorLayer:
     serializedVersion: 2
@@ -10908,6 +10911,7 @@ MonoBehaviour:
   cornerRightCheck: {fileID: 776557541}
   rayCornerLength: 2.8
   cornerDetected: 0
+  currentState: 0
   maxCoyoteTime: 0.25
   coyoteTimer: 0
   coyoteTimerEnabled: 0

@@ -8,9 +8,14 @@
           <NewMemberFileName>Assets\Scripts\PlayerMovement.cs</NewMemberFileName>
         </TypeIdentifier>
       </Enum>
+      <Enum Name="PlayerMovement.PlayerState" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Assets\Scripts\PlayerMovement.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
     </NestedTypes>
     <TypeIdentifier>
-      <HashCode>hgYAgECAIhIgYSIAgCBAAAAEA6AAAUAJAgCwCCiAAGA=</HashCode>
+      <HashCode>hhYAoECAIhMgYSIBoCDAAAAEAahAAUAJCkCwGCiAAGA=</HashCode>
       <FileName>Assets\Scripts\PlayerMovement.cs</FileName>
     </TypeIdentifier>
   </Class>
