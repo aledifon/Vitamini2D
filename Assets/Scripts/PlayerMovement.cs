@@ -140,7 +140,7 @@ public class PlayerMovement : MonoBehaviour
         if (jumpTriggered)
             JumpTrigger();
 
-        if (currentState == PlayerState.Jumping)
+        if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
             UpdateJumpMovement();
 
         UpdateMovement();
@@ -193,7 +193,7 @@ public class PlayerMovement : MonoBehaviour
                 //if (!isGrounded && rb2D.velocity.y > 0)
                 else if (jumpTriggered)
                     currentState = PlayerState.Jumping;
-                if (!isGrounded && rb2D.velocity.y < 0)
+                else if (!isGrounded && rb2D.velocity.y < 0)
                     currentState = PlayerState.Falling;                
                 break;            
             default:
@@ -275,7 +275,7 @@ public class PlayerMovement : MonoBehaviour
             coyoteTimer = 0;
         }
         // Coyote Timer will be triggered when the player stop touching the ground
-        else if (wasGrounded && !isGrounded)
+        else if ((wasGrounded && !isGrounded) && currentState != PlayerState.Jumping)
             coyoteTimerEnabled = true;
     }
     #endregion
@@ -342,30 +342,31 @@ public class PlayerMovement : MonoBehaviour
     }
     
     void UpdateJumpMovement()
-    {        
-        jumpingTimer += Time.fixedDeltaTime;
-        
-        // Jump button released and elapsed min Time
-        if (jumpingTimer >= minJumpingTime)
-        {            
-            // Stop giving jump speed;            
-            if (!jumpPressed || jumpingTimer >= maxJumpingTime)
+    {
+        if (currentState == PlayerState.Jumping)
+        {
+            jumpingTimer += Time.fixedDeltaTime;
+
+            // Jump button released and elapsed min Time
+            if (jumpingTimer >= minJumpingTime)
             {
-                rb2DJumpVelY *= 0.5f;
+                // Stop giving jump speed;            
+                if (!jumpPressed || jumpingTimer >= maxJumpingTime)
+                {
+                    rb2DJumpVelY *= 0.5f;
+                }
+                else
+                    rb2DJumpVelY = Vector2.up.y * jumpSpeed;
             }
             else
+            {
+                // Jumping force through velocity
                 rb2DJumpVelY = Vector2.up.y * jumpSpeed;
+                //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+            }
         }
-        else
-        {
-            // Jumping force through velocity
-            rb2DJumpVelY = Vector2.up.y * jumpSpeed;
-            //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
-        }
-
-        if (jumpingTimer >= maxJumpingTime)
-            Debug.Log("Max time elapsed");
-
+        else if (currentState == PlayerState.Falling)
+            rb2DJumpVelY = rb2D.velocity.y;
 
         // Jumping force through Add Force
         //rb2D.AddForce(Vector2.up*jumpForce);
@@ -385,13 +386,14 @@ public class PlayerMovement : MonoBehaviour
                 targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
                 break;
             case PlayerState.Jumping:
+            case PlayerState.Falling:
                 playerDirVelocity *= 0.8f;
                 targetVelocity = new Vector2(playerDirVelocity.x, playerJumpVelocity.y);
                 break;
-            case PlayerState.Falling:
-                playerDirVelocity *= 0.8f;
-                targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
-                break;
+            //case PlayerState.Falling:
+            //    playerDirVelocity *= 0.8f;
+            //    targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
+            //    break;
         }
 
         // Updates the correspondent new velocity                
