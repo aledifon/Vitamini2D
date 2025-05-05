@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
+using UnityEngine.UIElements;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -10,11 +11,13 @@ public class PlayerMovement : MonoBehaviour
     [Header("Velocity")]
     [SerializeField] float speed;
     [SerializeField] float smoothTime; // time will takes to reach the speed.
+    [SerializeField] float lerpSpeed;  // Interpolation Time
 
     [Header("Jump")]
     [SerializeField] float jumpForce;       // Jumping applied Force
-    [SerializeField] float jumpSpeed;       // Jumping applied Force
-    [SerializeField] bool jumpTriggered;       // Jumping applied Force
+    [SerializeField] float jumpVertSpeed;       // Jumping applied Force
+    [SerializeField] private float jumpHorizSpeed;       // Jumping applied Force
+    [SerializeField] bool jumpTriggered;    // Jumping applied Force
 
     [SerializeField] float minJumpDist;     // Min. Jumping Dist. Uds.
     [SerializeField] float maxJumpDist;     // Min. Jumping Dist. Uds.    
@@ -22,7 +25,12 @@ public class PlayerMovement : MonoBehaviour
     private float minJumpingTime;           // Min & Max Jumping Times (in func. of Jumping distance. & Jump. speed)                                            
     private float maxJumpingTime;
     private bool jumpPressed;
-    
+
+    [SerializeField] private float maxJumpHorizDist;  // Max allowed Horizontal Jumping distance
+    //[SerializeField] private float maxJumpHorizTimer; // Horizontal Jumping Timer                                                      
+    [SerializeField] private float maxJumpHorizTime;         // Max Jumping time on horizontal Movement
+                                                    // (Calculated in func. of maxJumpDistance & Player's speed)        
+
     // UI
     [Header("Acorn")]
     private float numAcorn;
@@ -76,8 +84,7 @@ public class PlayerMovement : MonoBehaviour
     Vector2 dampVelocity;            // Player's current speed storage (Velocity Movement type through r
     Vector2 direction;              // To handle the direction with the New Input System
 
-    Vector2 playerDirVelocity;
-    Vector2 playerJumpVelocity;
+    float rb2DDirVelX;    
     float rb2DJumpVelY;
 
     // GO Components
@@ -141,7 +148,10 @@ public class PlayerMovement : MonoBehaviour
             JumpTrigger();
 
         if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
-            UpdateJumpMovement();
+        {
+            jumpingTimer += Time.fixedDeltaTime;
+            CalculateJumpSpeedMovement();            
+        }
 
         UpdateMovement();
     }
@@ -186,10 +196,10 @@ public class PlayerMovement : MonoBehaviour
                 break;
             case PlayerState.Jumping:
             case PlayerState.Falling:
-                if ((isGrounded && !jumpPressed) && direction.x == 0)
-                    currentState = PlayerState.Idle;
-                else if ((isGrounded && !jumpPressed) && direction.x != 0)
-                    currentState = PlayerState.Running;
+                if ((isGrounded && !jumpPressed) && direction.x == 0)                                    
+                    currentState = PlayerState.Idle;                                    
+                else if ((isGrounded && !jumpPressed) && direction.x != 0)                                 
+                    currentState = PlayerState.Running;                                    
                 //if (!isGrounded && rb2D.velocity.y > 0)
                 else if (jumpTriggered)
                     currentState = PlayerState.Jumping;
@@ -285,16 +295,18 @@ public class PlayerMovement : MonoBehaviour
     {
         if (context.phase == InputActionPhase.Performed && (isGrounded || coyoteTimerEnabled))
         {
+            // Set the Jumping flags & Reset the Jumping Timer
             jumpTriggered = true;
             jumpPressed = true;
-            jumpingTimer = 0;   
-            Debug.Log("Jump triggered");
+            jumpingTimer = 0;
+
+            //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
+            jumpHorizSpeed = maxJumpHorizDist/ maxJumpHorizTime;            
         }        
 
         if(context.phase == InputActionPhase.Canceled)
         {
-            jumpPressed = false;
-            Debug.Log("Jump canceled");
+            jumpPressed = false;            
         }            
     }
     public void MoveActionInput(InputAction.CallbackContext context)
@@ -322,17 +334,17 @@ public class PlayerMovement : MonoBehaviour
     {
         // Solve the MRUA equation--> h = v0*t - (1/2)g*(t^2);
 
-        float discrimMinJumpTime = Mathf.Pow(jumpSpeed, 2) - 2 * Physics2D.gravity.y * minJumpDist;
-        float discrimMaxJumpTime = Mathf.Pow(jumpSpeed, 2) - 2 * Physics2D.gravity.y * maxJumpDist;
+        float discrimMinJumpTime = Mathf.Pow(jumpVertSpeed, 2) - 2 * Physics2D.gravity.y * minJumpDist;
+        float discrimMaxJumpTime = Mathf.Pow(jumpVertSpeed, 2) - 2 * Physics2D.gravity.y * maxJumpDist;
 
         if (discrimMinJumpTime >= 0)
-            minJumpingTime = (jumpSpeed - Mathf.Sqrt(discrimMinJumpTime)) / Physics2D.gravity.y;
+            minJumpingTime = (jumpVertSpeed - Mathf.Sqrt(discrimMinJumpTime)) / Physics2D.gravity.y;
         else
             // Jumping not posible, not enought initial speed
             Debug.LogError("The jumping is not posible with the initial speed and desired height");
 
         if (discrimMaxJumpTime >= 0)
-            maxJumpingTime = (jumpSpeed - Mathf.Sqrt(discrimMaxJumpTime)) / Physics2D.gravity.y;
+            maxJumpingTime = (jumpVertSpeed - Mathf.Sqrt(discrimMaxJumpTime)) / Physics2D.gravity.y;
         else
             // Jumping not posible, not enought initial speed
             Debug.LogError("The jumping is not posible with the initial speed and desired height");
@@ -341,12 +353,11 @@ public class PlayerMovement : MonoBehaviour
         maxJumpingTime += 0.03f;
     }
     
-    void UpdateJumpMovement()
-    {
+    void CalculateJumpSpeedMovement()
+    {                
+        // Calculate the Player's Jump Speed component 
         if (currentState == PlayerState.Jumping)
-        {
-            jumpingTimer += Time.fixedDeltaTime;
-
+        {            
             // Jump button released and elapsed min Time
             if (jumpingTimer >= minJumpingTime)
             {
@@ -356,12 +367,12 @@ public class PlayerMovement : MonoBehaviour
                     rb2DJumpVelY *= 0.5f;
                 }
                 else
-                    rb2DJumpVelY = Vector2.up.y * jumpSpeed;
+                    rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
             }
             else
             {
                 // Jumping force through velocity
-                rb2DJumpVelY = Vector2.up.y * jumpSpeed;
+                rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
                 //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
             }
         }
@@ -369,26 +380,21 @@ public class PlayerMovement : MonoBehaviour
             rb2DJumpVelY = rb2D.velocity.y;
 
         // Jumping force through Add Force
-        //rb2D.AddForce(Vector2.up*jumpForce);
-
-        // Calculate the Player's Jump Speed component
-        playerJumpVelocity = new Vector2(0, rb2DJumpVelY);
-    }
+        //rb2D.AddForce(Vector2.up*jumpForce);                
+    }    
     void UpdateMovement()
-    {
-        //targetVelocity = new Vector2(direction.x * speed, rb2D.velocity.y);
-        playerDirVelocity = new Vector2(direction.x * speed, 0);
-
+    {                        
         switch (currentState)
         {
             case PlayerState.Idle:
             case PlayerState.Running:
-                targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
+                rb2DDirVelX = direction.x * speed;
+                targetVelocity = new Vector2(rb2DDirVelX, rb2D.velocity.y);
                 break;
             case PlayerState.Jumping:
             case PlayerState.Falling:
-                playerDirVelocity *= 0.8f;
-                targetVelocity = new Vector2(playerDirVelocity.x, playerJumpVelocity.y);
+                rb2DDirVelX = direction.x * jumpHorizSpeed;                                                
+                targetVelocity = new Vector2(rb2DDirVelX, rb2DJumpVelY);
                 break;
             //case PlayerState.Falling:
             //    playerDirVelocity *= 0.8f;
@@ -400,14 +406,20 @@ public class PlayerMovement : MonoBehaviour
         if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
         {
             // Don't smooth the Y-axis while jumping
+            //rb2D.velocity = new Vector2(
+            //                Mathf.SmoothDamp(rb2D.velocity.x, targetVelocity.x, ref dampVelocity.x, smoothTime),
+            //                targetVelocity.y);
+
             rb2D.velocity = new Vector2(
-                            Mathf.SmoothDamp(rb2D.velocity.x, targetVelocity.x, ref dampVelocity.x, smoothTime),
+                            Mathf.Lerp(rb2D.velocity.x, targetVelocity.x, Time.fixedDeltaTime * lerpSpeed),
                             targetVelocity.y);
+            //rb2D.velocity = targetVelocity;
         }
         else
         {
             // Smooth both axis on normal states
-            rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);
+            //rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);
+            rb2D.velocity = Vector2.Lerp(rb2D.velocity, targetVelocity, Time.fixedDeltaTime * lerpSpeed);
         }
     }
     private void ChangeGravity()
