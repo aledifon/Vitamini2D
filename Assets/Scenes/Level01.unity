@@ -198,7 +198,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &423439179
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -389,7 +389,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &530277459
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -11064,9 +11064,10 @@ MonoBehaviour:
   minJumpDist: 3.7
   maxJumpDist: 4.7
   jumpingTimer: 0
-  maxJumpHorizDist: 6
+  maxJumpHorizDist: 8
   maxJumpHorizTime: 1
-  playerHorizMoveDisabled: 0
+  jumpBufferTime: 0.2
+  jumpBufferTimer: 0
   textAcornUI: {fileID: 1428549074}
   elevatorLayer:
     serializedVersion: 2

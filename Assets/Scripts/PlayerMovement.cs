@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
 using UnityEngine.UIElements;
+using System.Collections.Generic;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -24,13 +25,18 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float jumpingTimer;    // Jumping Timer
     private float minJumpingTime;           // Min & Max Jumping Times (in func. of Jumping distance. & Jump. speed)                                            
     private float maxJumpingTime;
-    private bool jumpPressed;
+    private bool jumpPressed;    
 
     [SerializeField] private float maxJumpHorizDist;  // Max allowed Horizontal Jumping distance
     //[SerializeField] private float maxJumpHorizTimer; // Horizontal Jumping Timer                                                      
     [SerializeField] private float maxJumpHorizTime;         // Max Jumping time on horizontal Movement
-                                                    // (Calculated in func. of maxJumpDistance & Player's speed)        
+                                                             // (Calculated in func. of maxJumpDistance & Player's speed)        
 
+    // Input Buffer
+    [Header("Input Buffer")]
+    [SerializeField] private float jumpBufferTime;
+    [SerializeField] private float jumpBufferTimer;
+    
     // UI
     [Header("Acorn")]
     private float numAcorn;
@@ -52,7 +58,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] Transform cornerRightCheck;  //Raycast origin point (Vitamini feet)
     [SerializeField] float rayCornerLength;     //Raycast Corner Length
                                                 //[SerializeField] bool cornerDetected;       //Corner detection flag
-
     #region Enums
     private enum CornerDetected
     {
@@ -109,12 +114,15 @@ public class PlayerMovement : MonoBehaviour
         boxCollider2D = GetComponent<BoxCollider2D>();  
 
         numAcorn = 0;
-        textAcornUI.text = numAcorn.ToString();
+        textAcornUI.text = numAcorn.ToString();        
     }
     private void Update()
     {
+        // Check Jump Input Buffer
+        CheckJumpInputBuffer();
+
         // Update the player state
-        UpdatePlayerState();
+        UpdatePlayerState();        
 
         // Update the player's gravity when falling down
         ChangeGravity();
@@ -290,19 +298,25 @@ public class PlayerMovement : MonoBehaviour
     }
     #endregion
 
-    #region Movement
+    #region Input Player 
     public void JumpActionInput(InputAction.CallbackContext context)
     {
-        if (context.phase == InputActionPhase.Performed && (isGrounded || coyoteTimerEnabled))
+        if (context.phase == InputActionPhase.Performed)
         {
-            // Set the Jumping flags & Reset the Jumping Timer
-            jumpTriggered = true;
             jumpPressed = true;
-            jumpingTimer = 0;
+            jumpBufferTimer = jumpBufferTime;
+        }
 
-            //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
-            jumpHorizSpeed = maxJumpHorizDist/ maxJumpHorizTime;            
-        }        
+        //if (context.phase == InputActionPhase.Performed && (isGrounded || coyoteTimerEnabled))
+        //{                        
+        //    // Set the Jumping flags & Reset the Jumping Timer
+        //    jumpTriggered = true;
+        //    jumpPressed = true;
+        //    jumpingTimer = 0;
+
+        //    //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
+        //    jumpHorizSpeed = maxJumpHorizDist / maxJumpHorizTime;            
+        //}
 
         if(context.phase == InputActionPhase.Canceled)
         {
@@ -317,7 +331,24 @@ public class PlayerMovement : MonoBehaviour
         FlipSprite(direction.x);       
         AnimatingRunning(direction.x);
     }
-    // Player jump handling
+    private void CheckJumpInputBuffer()
+    {
+        if (jumpBufferTimer > 0)
+            jumpBufferTimer -= Time.deltaTime;
+
+        if((isGrounded || coyoteTimerEnabled) && jumpBufferTimer > 0)
+        {
+            // Set the Jumping flags & Reset the Jumping Timer
+            jumpTriggered = true;            
+            jumpingTimer = 0;
+            jumpBufferTimer = 0;
+
+            //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
+            jumpHorizSpeed = maxJumpHorizDist / maxJumpHorizTime;
+        }
+    }
+    #endregion
+    #region Movement
     void JumpTrigger()
     {
         jumpTriggered = false;
@@ -351,8 +382,7 @@ public class PlayerMovement : MonoBehaviour
 
         // Max Jumping Time Correction
         maxJumpingTime += 0.03f;
-    }
-    
+    }    
     void CalculateJumpSpeedMovement()
     {                
         // Calculate the Player's Jump Speed component 
