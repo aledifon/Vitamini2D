@@ -16,23 +16,32 @@ public class EnemyMovement : MonoBehaviour
 
     // Movement vars
     [Header("Movement")]
-    [SerializeField] int normalSpeed;             // Ant's normal speed    
-    [SerializeField] int boostedSpeed;            // Ant's boosted speed (whenever a player is detected)
-    int currentSpeed;                             // Ant's current Speed
+    [SerializeField] int walkingSpeed;           // Ant's normal speed    
+    [SerializeField] int attackSpeed;           // Ant's boosted speed (whenever a player is detected)
+    [SerializeField] int animAttackSpeed;
+    int speed;                                  // Ant's current Speed
 
     [Header("Raycast")]    
     [SerializeField] LayerMask playerLayer;         // Player Layer
-    [SerializeField] float rayLength;               // Raycast Length
+    [SerializeField] float pursuitDistance;         // Raycast Length
     [SerializeField] bool isDetecting;              // Player detection flag
     Vector2 raycastDir;
 
+    [Header("Player")]
+    [SerializeField] private GameObject player;
+
     // GOs 
     SpriteRenderer spriteRenderer;
+    Animator anim;
 
     void Awake()
     {
+        // Set the initial speed
+        speed = walkingSpeed;
+
         // Get component
         spriteRenderer = GetComponent<SpriteRenderer>();
+        anim = GetComponent<Animator>();        
 
         // Init the points Vector
         points = new Vector2[pointsObjects.Length];
@@ -50,17 +59,46 @@ public class EnemyMovement : MonoBehaviour
     }
 
     // Update is called once per frame
-    void FixedUpdate()
-    {
-        DetectPlayer();
-        UpdateTargetPosition();
-        Patrol();
-    }
+    //void FixedUpdate()
+    //{
+    //    //DetectPlayer();        
+    //}
 
     private void Update()
     {
-        FlipSprite();
+        // Check if the player has been detected
+        DetectPlayer();
+
+        // Update the Enemy's speed & anim's speed in func. of the player has been deteced or not
+        if (isDetecting)
+            AttackPlayer();
+        else
+            UpdateTargetPosition();
+        
+        Patrol();
+        FlipSprite();        
     }
+    private void AttackPlayer()
+    {
+        speed = attackSpeed;
+        anim.speed = animAttackSpeed;
+        targetPosition = new Vector2(player.transform.position.x, targetPosition.y);
+    } 
+    // Raycast Detect Player Method
+    //void DetectPlayer()
+    //{
+    //    // Update raycastDirection
+    //    if (spriteRenderer.flipX)
+    //        raycastDir = Vector2.right;
+    //    else
+    //        raycastDir = Vector2.left;
+
+    //    // Raycast Launching
+    //    isDetecting = Physics2D.Raycast(transform.position, raycastDir, pursuitDistance, playerLayer);
+    //    // Raycast Debugging
+    //    Debug.DrawRay(transform.position, raycastDir * pursuitDistance, Color.red);
+    //}
+    // No-Raycast Detec Player Method
     void DetectPlayer()
     {
         // Update raycastDirection
@@ -70,12 +108,15 @@ public class EnemyMovement : MonoBehaviour
             raycastDir = Vector2.left;
 
         // Raycast Launching
-        isDetecting = Physics2D.Raycast(transform.position, raycastDir, rayLength, playerLayer);
+        isDetecting = Vector2.Distance(transform.position, player.transform.position) <= pursuitDistance;
         // Raycast Debugging
-        Debug.DrawRay(transform.position, raycastDir * rayLength, Color.red);
+        Debug.DrawRay(transform.position, raycastDir * pursuitDistance, Color.red);
     }
     void UpdateTargetPosition()
     {
+        speed = walkingSpeed;
+        anim.speed = 1;         // Equivalent to the num of samples already set on current animation
+
         // Update the patrol target points
         if (Vector2.Distance(transform.position, targetPosition) < Mathf.Epsilon)
         {            
@@ -88,15 +129,9 @@ public class EnemyMovement : MonoBehaviour
         }
     }
     void Patrol()
-    {
-        // Update the currentSpeed in case a player is detected or not
-        if (isDetecting)
-            currentSpeed = boostedSpeed;
-        else
-            currentSpeed = normalSpeed;
-
+    {        
         // Update the ant's position
-        transform.position = Vector3.MoveTowards(transform.position, targetPosition, currentSpeed * Time.fixedDeltaTime);        
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);        
     }
     // Flip the Enemy's sprite in function of its movement
     void FlipSprite()
