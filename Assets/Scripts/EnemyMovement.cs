@@ -33,6 +33,7 @@ public class EnemyMovement : MonoBehaviour
     // GOs 
     SpriteRenderer spriteRenderer;
     Animator anim;
+    AudioSource audioSource;    
 
     void Awake()
     {
@@ -41,7 +42,8 @@ public class EnemyMovement : MonoBehaviour
 
         // Get component
         spriteRenderer = GetComponent<SpriteRenderer>();
-        anim = GetComponent<Animator>();        
+        anim = GetComponent<Animator>();
+        audioSource = GetComponent<AudioSource>();
 
         // Init the points Vector
         points = new Vector2[pointsObjects.Length];
@@ -140,5 +142,10 @@ public class EnemyMovement : MonoBehaviour
             spriteRenderer.flipX = true;
         else
             spriteRenderer.flipX = false;
+    }
+
+    public void PlayDeathFx()
+    {
+        audioSource.Play();
     }
 }

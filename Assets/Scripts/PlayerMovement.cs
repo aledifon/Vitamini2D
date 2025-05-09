@@ -32,15 +32,28 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float maxJumpHorizTime;         // Max Jumping time on horizontal Movement
                                                              // (Calculated in func. of maxJumpDistance & Player's speed)        
 
+    // Coyote Time vars
+    [Header("Coyote Time")]
+    [SerializeField] private float maxCoyoteTime;
+    [SerializeField] private float coyoteTimer;
+    [SerializeField] private bool coyoteTimerEnabled;
+
+    // Raycast Corner checks
+    [Header("Corner Detection")]
+    [SerializeField] Transform cornerLeftCheck;   //Raycast origin point (Vitamini feet)
+    [SerializeField] Transform cornerRightCheck;  //Raycast origin point (Vitamini feet)
+    [SerializeField] float rayCornerLength;     //Raycast Corner Length
+                                                //[SerializeField] bool cornerDetected;       //Corner detection flag
+
     // Input Buffer
     [Header("Input Buffer")]
     [SerializeField] private float jumpBufferTime;
     [SerializeField] private float jumpBufferTimer;
     
-    // UI
+    // UI        
     [Header("Acorn")]
-    private float numAcorn;
     [SerializeField] private TextMeshProUGUI textAcornUI;
+    private float numAcorn;
 
     [Header("Elevator")]
     [SerializeField] LayerMask elevatorLayer;
@@ -53,20 +66,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] bool isGrounded;       //Ground touching flag
     private bool wasGrounded;               //isGrounded value of previous frame
 
-    // Raycast Corner checks
-    [SerializeField] Transform cornerLeftCheck;   //Raycast origin point (Vitamini feet)
-    [SerializeField] Transform cornerRightCheck;  //Raycast origin point (Vitamini feet)
-    [SerializeField] float rayCornerLength;     //Raycast Corner Length
-                                                //[SerializeField] bool cornerDetected;       //Corner detection flag
-    #region Enums
+    #region Enums    
     private enum CornerDetected
     {
         NoCeiling,
         Ceiling,
         CornerLeft,
         CornerRight,
-    }
-    [SerializeField] private CornerDetected cornerDetected = CornerDetected.NoCeiling;
+    }    
     // Define Character States
     public enum PlayerState
     {
@@ -77,6 +84,8 @@ public class PlayerMovement : MonoBehaviour
         Swinging,
         Hurting
     }
+    [Header("Enums")]
+    [SerializeField] private CornerDetected cornerDetected = CornerDetected.NoCeiling;
     [SerializeField] private PlayerState currentState = PlayerState.Idle;
     #endregion
 
@@ -96,11 +105,11 @@ public class PlayerMovement : MonoBehaviour
     SpriteRenderer spriteRenderer;
     Animator animator;
     BoxCollider2D boxCollider2D;
+    AudioSource audioSource;
 
-    // Coyote Time vars
-    [SerializeField] private float maxCoyoteTime;
-    [SerializeField] private float coyoteTimer;
-    [SerializeField] private bool coyoteTimerEnabled;
+    // Audio Clips
+    [Header("Audio Clips")]
+    [SerializeField] AudioClip jumpAudioFx;    
 
     // Flip Flag
     //private bool lastFlipState;
@@ -112,6 +121,7 @@ public class PlayerMovement : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
         boxCollider2D = GetComponent<BoxCollider2D>();  
+        audioSource = GetComponent<AudioSource>();
 
         numAcorn = 0;
         textAcornUI.text = numAcorn.ToString();        
@@ -166,7 +176,11 @@ public class PlayerMovement : MonoBehaviour
     // Collisions
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.collider.CompareTag("Acorn"))
+        if (collision.collider.CompareTag("Ant"))
+        {
+            AttackEnemy(collision.gameObject);
+        }
+        else if (collision.collider.CompareTag("Acorn"))
         {
             // Acorn dissappear
             Destroy(collision.collider.gameObject);
@@ -360,6 +374,9 @@ public class PlayerMovement : MonoBehaviour
             transform.position += new Vector3(0.7f, 0f);
 
         CalculateJumpTimes();
+
+        // Trigger Jump Sound
+        audioSource.PlayOneShot(jumpAudioFx);
     }
     void CalculateJumpTimes()
     {
@@ -460,7 +477,20 @@ public class PlayerMovement : MonoBehaviour
         else
             rb2D.gravityScale = 1f;
     }
-    #endregion    
+    #endregion
+
+    #region Attack
+    private void AttackEnemy(GameObject enemy)
+    {
+        if(isGrounded)
+            return;
+
+        rb2D.AddForce(Vector2.up * jumpForce);
+        enemy.GetComponent<Animator>().SetTrigger("Death");
+        enemy.GetComponent<EnemyMovement>().PlayDeathFx();
+        Destroy(enemy,0.5f);
+    }
+    #endregion
 
     #region Sprite & Animations
     // Flip the Player sprite in function of its movement
