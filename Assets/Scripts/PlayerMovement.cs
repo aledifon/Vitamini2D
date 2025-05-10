@@ -64,6 +64,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] LayerMask groundLayer;  //Ground Layer
     [SerializeField] float rayLength;       //Raycast Length
     [SerializeField] bool isGrounded;       //Ground touching flag
+    public bool IsGrounded => isGrounded;
     private bool wasGrounded;               //isGrounded value of previous frame
 
     #region Enums    
@@ -362,6 +363,18 @@ public class PlayerMovement : MonoBehaviour
         }
     }
     #endregion
+
+    #region RigidBody
+    public void SetRbAsKinematics()
+    {
+        rb2D.isKinematic = true;
+    }
+    public void SetRbAsDynamics()
+    {
+        rb2D.isKinematic = false;
+    }
+    #endregion
+
     #region Movement
     void JumpTrigger()
     {
@@ -476,6 +489,11 @@ public class PlayerMovement : MonoBehaviour
             rb2D.gravityScale = 2.5f;
         else
             rb2D.gravityScale = 1f;
+    }
+    public void ResetVelocity()
+    {
+        // Stops the player resetting its velocity
+        targetVelocity = Vector2.zero;
     }
     #endregion
 

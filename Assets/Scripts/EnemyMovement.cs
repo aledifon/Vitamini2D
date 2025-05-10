@@ -30,15 +30,22 @@ public class EnemyMovement : MonoBehaviour
     [Header("Player")]
     [SerializeField] private GameObject player;
 
+    // Boolean Flags
+    private bool playerDetectionEnabled;
+
     // GOs 
     SpriteRenderer spriteRenderer;
     Animator anim;
-    AudioSource audioSource;    
+    AudioSource audioSource;
 
+    #region Unity API
     void Awake()
     {
         // Set the initial speed
         speed = walkingSpeed;
+
+        // Set the initial flags
+        playerDetectionEnabled = true;
 
         // Get component
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -59,13 +66,11 @@ public class EnemyMovement : MonoBehaviour
         // Init raycastDir        
         raycastDir = Vector2.left;
     }
-
     // Update is called once per frame
     //void FixedUpdate()
     //{
     //    //DetectPlayer();        
     //}
-
     private void Update()
     {
         // Check if the player has been detected
@@ -80,12 +85,28 @@ public class EnemyMovement : MonoBehaviour
         Patrol();
         FlipSprite();        
     }
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.collider.CompareTag("Player") && 
+            collision.collider.GetComponent<PlayerMovement>().IsGrounded)
+        {
+            // Take Player's Damage & Disable the player's detection for a certain time
+            collision.collider.GetComponent<PlayerHealth>().TakeDamage(20);
+            playerDetectionEnabled = false;
+            Invoke("EnablePlayerDetection", collision.collider.GetComponent<PlayerHealth>().FadingTotalDuration);
+        }
+    }
+    #endregion
+    #region Private Methods
+    #region Enemy Attack
     private void AttackPlayer()
     {
         speed = attackSpeed;
         anim.speed = animAttackSpeed;
         targetPosition = new Vector2(player.transform.position.x, targetPosition.y);
-    } 
+    }
+    #endregion
+    #region Player Detection
     // Raycast Detect Player Method
     //void DetectPlayer()
     //{
@@ -110,10 +131,17 @@ public class EnemyMovement : MonoBehaviour
             raycastDir = Vector2.left;
 
         // Raycast Launching
-        isDetecting = Vector2.Distance(transform.position, player.transform.position) <= pursuitDistance;
+        isDetecting = (Vector2.Distance(transform.position, player.transform.position) <= pursuitDistance) &&
+                        playerDetectionEnabled;
         // Raycast Debugging
         Debug.DrawRay(transform.position, raycastDir * pursuitDistance, Color.red);
     }
+    void EnablePlayerDetection()
+    {
+        playerDetectionEnabled = true;
+    }
+    #endregion
+    #region Enemy Movement
     void UpdateTargetPosition()
     {
         speed = walkingSpeed;
@@ -135,6 +163,8 @@ public class EnemyMovement : MonoBehaviour
         // Update the ant's position
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);        
     }
+    #endregion
+    #region Sprite
     // Flip the Enemy's sprite in function of its movement
     void FlipSprite()
     {        
@@ -143,9 +173,14 @@ public class EnemyMovement : MonoBehaviour
         else
             spriteRenderer.flipX = false;
     }
-
+    #endregion
+    #endregion
+    #region Public Methods
+    #region Audio
     public void PlayDeathFx()
     {
         audioSource.Play();
     }
+    #endregion
+    #endregion
 }
