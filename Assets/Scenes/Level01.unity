@@ -12095,12 +12095,14 @@ MonoBehaviour:
   currentHealth: 0
   acornLife: {fileID: 1116674855}
   amountLife: 0.2
-  forceJumpDeath: 200
+  forceJumpDeath: 1000
   fadingOutTimer: 0
   fadeOutDuration: 0.1
   fadingTimer: 0
   fadingTotalDuration: 2
   damageAudioFx: {fileID: 8300000, guid: cddaaa465802b4447acc7752f1cf6db2, type: 3}
+  deathAudioFx: {fileID: 8300000, guid: ad3126581aea4e94b94b1857dce7cafa, type: 3}
+  cameraFollow: {fileID: 519420033}
 --- !u!1 &1428549072
 GameObject:
   m_ObjectHideFlags: 0

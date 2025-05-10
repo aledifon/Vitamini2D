@@ -110,10 +110,13 @@ public class PlayerMovement : MonoBehaviour
 
     // Audio Clips
     [Header("Audio Clips")]
-    [SerializeField] AudioClip jumpAudioFx;    
+    [SerializeField] AudioClip jumpAudioFx;
 
     // Flip Flag
     //private bool lastFlipState;
+
+    private bool isDead;
+    public bool IsDead { get => isDead; set => isDead = value; }
 
     #region Unity API
     void Awake()
@@ -486,9 +489,19 @@ public class PlayerMovement : MonoBehaviour
     {
         // Gravity will be heavier when the player is falling down
         if (rb2D.velocity.y < 0)
-            rb2D.gravityScale = 2.5f;
+        {
+            if (isDead)
+                rb2D.gravityScale = 5f;
+            else
+                rb2D.gravityScale = 2.5f;
+        }
         else
-            rb2D.gravityScale = 1f;
+        {
+            if (isDead)
+                rb2D.gravityScale = 2f;
+            else
+                rb2D.gravityScale = 1f;
+        }
     }
     public void ResetVelocity()
     {

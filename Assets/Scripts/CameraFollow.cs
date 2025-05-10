@@ -10,6 +10,8 @@ public class CameraFollow : MonoBehaviour
         
     Vector3 smoothDampVelocity;            // Player's current speed storage (Velocity Movement type through r        
 
+    private bool cameraFollowEnabled = true;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -19,8 +21,13 @@ public class CameraFollow : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
+        if (cameraFollowEnabled) 
+            transform.position = Vector3.SmoothDamp(transform.position, player.position + offset, 
+                                                    ref smoothDampVelocity, smoothTargetTime);
+    }
 
-        transform.position = Vector3.SmoothDamp(transform.position, player.position + offset, 
-                                                ref smoothDampVelocity, smoothTargetTime);
+    public void StopCameraFollow()
+    {
+        cameraFollowEnabled = false;
     }
 }

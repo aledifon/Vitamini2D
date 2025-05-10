@@ -31,6 +31,10 @@ public class PlayerHealth : MonoBehaviour
     // Audio Clips
     [Header("Audio Clips")]
     [SerializeField] AudioClip damageAudioFx;
+    [SerializeField] AudioClip deathAudioFx;
+
+    [Header("Camera")]
+    [SerializeField] CameraFollow cameraFollow;
 
     void Awake()
     {
@@ -55,10 +59,7 @@ public class PlayerHealth : MonoBehaviour
 
         // Set the Hurt animation  & reset the player's velocity
         anim.SetBool("Hurt", true);
-        playerMovement.ResetVelocity();
-
-        // Play the Damage Fx
-        audioSource.PlayOneShot(damageAudioFx);
+        playerMovement.ResetVelocity();        
 
         // If Health <=0 --> Executes Death Method
         if (currentHealth <= 0)
@@ -66,6 +67,9 @@ public class PlayerHealth : MonoBehaviour
             Death();
             return;
         }
+
+        // Play the Damage Fx
+        audioSource.PlayOneShot(damageAudioFx);
         // Sprite Fading
         StartCoroutine(nameof(SpriteFading));
         // Disable the Player's Collider during the Hurt Animation & reset the Hurt animation after 1s.
@@ -136,8 +140,19 @@ public class PlayerHealth : MonoBehaviour
     }
     private void Death()
     {
+        // Stop the Camera Following
+        cameraFollow.StopCameraFollow();
+        // Set the Player isDead Flag
+        playerMovement.IsDead = true;
+
         // Disable the Vitamini's Circle Collider & Apply an upwards impulse
         GetComponent<CircleCollider2D>().enabled = false;
         GetComponent<Rigidbody2D>().AddForce(Vector2.up * forceJumpDeath);
+
+        // Play the Damage Fx
+        audioSource.PlayOneShot(deathAudioFx);
+
+        // Set the New Local Scale
+        transform.localScale = Vector3.Scale(transform.localScale, new Vector3(2.5f, 2.5f, 2.5f));
     }
 }

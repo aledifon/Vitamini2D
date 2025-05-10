@@ -91,7 +91,7 @@ public class EnemyMovement : MonoBehaviour
             collision.collider.GetComponent<PlayerMovement>().IsGrounded)
         {
             // Take Player's Damage & Disable the player's detection for a certain time
-            collision.collider.GetComponent<PlayerHealth>().TakeDamage(20);
+            collision.collider.GetComponent<PlayerHealth>().TakeDamage(100);
             playerDetectionEnabled = false;
             Invoke("EnablePlayerDetection", collision.collider.GetComponent<PlayerHealth>().FadingTotalDuration);
         }
