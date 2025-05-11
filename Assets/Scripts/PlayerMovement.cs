@@ -54,6 +54,10 @@ public class PlayerMovement : MonoBehaviour
     [Header("Acorn")]
     [SerializeField] private TextMeshProUGUI textAcornUI;
     private float numAcorn;
+    private float NumAcorn
+    { get { return numAcorn; } 
+      set { numAcorn = Mathf.Clamp(value,0,99); } 
+    }
 
     [Header("Elevator")]
     [SerializeField] LayerMask elevatorLayer;
@@ -111,6 +115,7 @@ public class PlayerMovement : MonoBehaviour
     // Audio Clips
     [Header("Audio Clips")]
     [SerializeField] AudioClip jumpAudioFx;
+    [SerializeField] AudioClip acornAudioFx;
 
     // Flip Flag
     //private bool lastFlipState;
@@ -127,8 +132,8 @@ public class PlayerMovement : MonoBehaviour
         boxCollider2D = GetComponent<BoxCollider2D>();  
         audioSource = GetComponent<AudioSource>();
 
-        numAcorn = 0;
-        textAcornUI.text = numAcorn.ToString();        
+        NumAcorn = 0;
+        textAcornUI.text = NumAcorn.ToString();        
     }
     private void Update()
     {
@@ -189,9 +194,16 @@ public class PlayerMovement : MonoBehaviour
             // Acorn dissappear
             Destroy(collision.collider.gameObject);
             // Increase Acorn counter
-            numAcorn++;
+            NumAcorn++;
             // Update Acorn counter UI Text
-            textAcornUI.text = numAcorn.ToString();
+            textAcornUI.text = NumAcorn.ToString();
+
+            // Play Acorn Fx
+            audioSource.PlayOneShot(acornAudioFx);
+
+            // Condition to pass to the next Scene
+            if (NumAcorn == 3)
+                LoadScene();
         }
     }
     #endregion
@@ -550,7 +562,14 @@ public class PlayerMovement : MonoBehaviour
     {
         animator.SetBool("IsJumping", !isGrounded);
     }
-    #endregion    
+    #endregion
+
+    #region Scene Management
+    private void LoadScene()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene("Level02");
+    }
+    #endregion
 
     // Old Input System
     //void InputPlayer()

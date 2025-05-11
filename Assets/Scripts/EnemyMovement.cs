@@ -14,6 +14,9 @@ public class EnemyMovement : MonoBehaviour
     Vector3 targetPosition;
     int indexTargetPos;
 
+    [Header("Damage")]
+    [SerializeField] private int damageAmount;
+
     // Movement vars
     [Header("Movement")]
     [SerializeField] int walkingSpeed;           // Ant's normal speed    
@@ -91,7 +94,7 @@ public class EnemyMovement : MonoBehaviour
             collision.collider.GetComponent<PlayerMovement>().IsGrounded)
         {
             // Take Player's Damage & Disable the player's detection for a certain time
-            collision.collider.GetComponent<PlayerHealth>().TakeDamage(100);
+            collision.collider.GetComponent<PlayerHealth>().TakeDamage(damageAmount);
             playerDetectionEnabled = false;
             Invoke("EnablePlayerDetection", collision.collider.GetComponent<PlayerHealth>().FadingTotalDuration);
         }

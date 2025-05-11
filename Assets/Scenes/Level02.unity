@@ -333,11 +333,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 7.826269
+      value: 13.59
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.0771766
+      value: 3.56
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1413,11 +1413,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 18.973679
+      value: 13.55
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.271333
+      value: 2.49
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.z
@@ -12368,7 +12368,7 @@ MonoBehaviour:
   fadingOutTimer: 0
   fadeOutDuration: 0.1
   fadingTimer: 0
-  fadingTotalDuration: 1.5
+  fadingTotalDuration: 2
   damageAudioFx: {fileID: 8300000, guid: cddaaa465802b4447acc7752f1cf6db2, type: 3}
   deathAudioFx: {fileID: 8300000, guid: ad3126581aea4e94b94b1857dce7cafa, type: 3}
   cameraFollow: {fileID: 519420033}
@@ -12730,11 +12730,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.8238835
+      value: 13.61
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.98
+      value: 4.63
       objectReference: {fileID: 0}
     - target: {fileID: 6670120532695463731, guid: e409498997f28614ca2977bfa29b6f91, type: 3}
       propertyPath: m_LocalPosition.z
