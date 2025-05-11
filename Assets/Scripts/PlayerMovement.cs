@@ -124,8 +124,48 @@ public class PlayerMovement : MonoBehaviour
     public bool IsDead { get => isDead; set => isDead = value; }
 
     #region Unity API
+
+    private void OnDrawGizmos()
+    {
+        if (Camera.current == null || Camera.current.name != "Main Camera") return;
+
+        // Ground Raycasts Debugging
+        Gizmos.color = Color.red;
+        Gizmos.DrawRay(groundChecks[0].position, Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[0].position + (Vector3.right * 0.01f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[0].position + (Vector3.right * 0.02f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[0].position + (Vector3.left * 0.01f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[0].position + (Vector3.left * 0.02f), Vector2.down * rayLength);
+        //Gizmos.color = Color.blue;
+        Gizmos.DrawRay(groundChecks[1].position, Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[1].position + (Vector3.right * 0.01f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[1].position + (Vector3.right * 0.02f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[1].position + (Vector3.left * 0.01f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[1].position + (Vector3.left * 0.02f), Vector2.down * rayLength);
+        //Gizmos.color = Color.green;
+        Gizmos.DrawRay(groundChecks[2].position, Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[2].position + (Vector3.right * 0.01f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[2].position + (Vector3.right * 0.02f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[2].position + (Vector3.left * 0.01f), Vector2.down * rayLength);
+        Gizmos.DrawRay(groundChecks[2].position + (Vector3.left * 0.02f), Vector2.down * rayLength);
+
+        // Ceiling Raycast Debugging
+        Gizmos.color = Color.green;
+        Gizmos.DrawRay(cornerLeftCheck.position, Vector2.up * rayCornerLength);
+        Gizmos.DrawRay(cornerLeftCheck.position + (Vector3.right * 0.01f), Vector2.up * rayCornerLength);
+        Gizmos.DrawRay(cornerLeftCheck.position + (Vector3.left * 0.01f), Vector2.up * rayCornerLength);
+        Gizmos.DrawRay(cornerRightCheck.position, Vector2.up * rayCornerLength);
+        Gizmos.DrawRay(cornerRightCheck.position + (Vector3.right * 0.01f), Vector2.up * rayCornerLength);
+        Gizmos.DrawRay(cornerRightCheck.position + (Vector3.left * 0.01f), Vector2.up * rayCornerLength);
+    }
+
     void Awake()
     {
+        // ONLY FOR RECORDING
+        // Establecer cámara lenta (por ejemplo, a la mitad de velocidad)
+        //Time.timeScale = 0.3f;
+        // ONLY FOR RECORDING
+
         rb2D = GetComponent<Rigidbody2D>();   
         spriteRenderer = GetComponent<SpriteRenderer>();
         animator = GetComponent<Animator>();
@@ -271,8 +311,16 @@ public class PlayerMovement : MonoBehaviour
         }        
 
         // Raycast Debugging
-        foreach(Transform groundCheck in groundChecks)
-            Debug.DrawRay(groundCheck.position,Vector2.down*rayLength,Color.red);        
+        //foreach(Transform groundCheck in groundChecks)
+        //{
+        //    Debug.DrawRay(groundCheck.position, Vector2.down * rayLength, Color.red);
+        //    // Draw 2 aditional lines to make easier the raycast visualization
+        //    //Debug.DrawRay(groundCheck.position + (Vector3.right * 0.01f), Vector2.down * rayLength, Color.red);
+        //    //Debug.DrawRay(groundCheck.position + (Vector3.left * 0.01f), Vector2.down * rayLength, Color.red);
+        //}
+        //Debug.DrawRay(groundChecks[0].position, Vector2.down * rayLength, Color.red);
+        //Debug.DrawRay(groundChecks[1].position, Vector2.down * rayLength, Color.blue);
+        //Debug.DrawRay(groundChecks[2].position, Vector2.down * rayLength, Color.green);        
     }
     void RaycastCeiling()
     {
@@ -295,8 +343,8 @@ public class PlayerMovement : MonoBehaviour
             cornerDetected = CornerDetected.NoCeiling;
         
         // Raycast Debugging        
-        Debug.DrawRay(cornerLeftCheck.position, Vector2.up * rayCornerLength, Color.green);
-        Debug.DrawRay(cornerRightCheck.position, Vector2.up * rayCornerLength, Color.green);
+        //Debug.DrawRay(cornerLeftCheck.position, Vector2.up * rayCornerLength, Color.green);
+        //Debug.DrawRay(cornerRightCheck.position, Vector2.up * rayCornerLength, Color.green);
     }
     #endregion
 

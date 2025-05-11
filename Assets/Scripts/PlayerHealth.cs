@@ -151,6 +151,7 @@ public class PlayerHealth : MonoBehaviour
 
         // Play the Damage Fx
         audioSource.PlayOneShot(deathAudioFx);
+        GameManager.Instance.PlayGameOverFx();
 
         // Set the New Local Scale
         transform.localScale = Vector3.Scale(transform.localScale, new Vector3(2.5f, 2.5f, 2.5f));
