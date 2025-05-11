@@ -12594,7 +12594,7 @@ MonoBehaviour:
   cornerDetected: 0
   currentState: 0
   jumpAudioFx: {fileID: 8300000, guid: 12fd9992f455b58459060bf817099e87, type: 3}
-  acornAudioFx: {fileID: 8300000, guid: 28d967fd71adcac48bfe938f0aef3537, type: 3}
+  acornAudioFx: {fileID: 8300000, guid: 0286cb6c655576644a8871257da47764, type: 3}
 --- !u!95 &1427650242
 Animator:
   serializedVersion: 7
@@ -12842,8 +12842,8 @@ MonoBehaviour:
   fadeOutDuration: 0.1
   fadingTimer: 0
   fadingTotalDuration: 1.5
-  damageAudioFx: {fileID: 8300000, guid: cddaaa465802b4447acc7752f1cf6db2, type: 3}
-  deathAudioFx: {fileID: 8300000, guid: ad3126581aea4e94b94b1857dce7cafa, type: 3}
+  damageAudioFx: {fileID: 8300000, guid: 46cdda8081d67af48b2ddca260f0f8cf, type: 3}
+  deathAudioFx: {fileID: 8300000, guid: 306436e0b315f194fae65f7f020b4a88, type: 3}
   cameraFollow: {fileID: 519420033}
 --- !u!1 &1428549072
 GameObject:
