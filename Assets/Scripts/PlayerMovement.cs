@@ -19,6 +19,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float jumpVertSpeed;       // Jumping applied Force
     [SerializeField] private float jumpHorizSpeed;       // Jumping applied Force
     [SerializeField] bool jumpTriggered;    // Jumping applied Force
+    [SerializeField] bool wallJumpTriggered;    // Jumping applied Force
 
     [SerializeField] float minJumpDist;     // Min. Jumping Dist. Uds.
     [SerializeField] float maxJumpDist;     // Min. Jumping Dist. Uds.    
@@ -71,6 +72,16 @@ public class PlayerMovement : MonoBehaviour
     public bool IsGrounded => isGrounded;
     private bool wasGrounded;               //isGrounded value of previous frame
 
+    [Header("Raycast Walls")]
+    [SerializeField] Transform wallLeftCheck;     //Raycast origin point 
+    [SerializeField] Transform wallRightCheck;     //Raycast origin point 
+    [SerializeField] LayerMask wallLayer;       //Wall Layer
+    [SerializeField] float rayWallLength;    //Raycast Wall Fwd Length
+    [SerializeField] bool isWallDetected;       //Wall Fwd detection flag
+    [SerializeField] float wallJumpForce;       // Jumping applied Force
+    Vector2 rayWallOrigin;
+    Vector2 rayWallDir;
+
     #region Enums    
     private enum CornerDetected
     {
@@ -85,7 +96,9 @@ public class PlayerMovement : MonoBehaviour
         Idle,
         Running,
         Jumping,
+        WallJumping,
         Falling,
+        WallBraking,
         Swinging,
         Hurting
     }
@@ -157,6 +170,14 @@ public class PlayerMovement : MonoBehaviour
         Gizmos.DrawRay(cornerRightCheck.position, Vector2.up * rayCornerLength);
         Gizmos.DrawRay(cornerRightCheck.position + (Vector3.right * 0.01f), Vector2.up * rayCornerLength);
         Gizmos.DrawRay(cornerRightCheck.position + (Vector3.left * 0.01f), Vector2.up * rayCornerLength);
+
+        // Ground Raycasts Debugging
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(rayWallOrigin, rayWallDir * rayWallLength);
+        Gizmos.DrawRay(rayWallOrigin + (Vector2.up * 0.01f), rayWallDir * rayWallLength);
+        Gizmos.DrawRay(rayWallOrigin + (Vector2.up * 0.02f), rayWallDir * rayWallLength);
+        Gizmos.DrawRay(rayWallOrigin + (Vector2.down * 0.01f), rayWallDir * rayWallLength);
+        Gizmos.DrawRay(rayWallOrigin + (Vector2.down * 0.02f), rayWallDir * rayWallLength);
     }
 
     void Awake()
@@ -189,6 +210,8 @@ public class PlayerMovement : MonoBehaviour
         RaycastGrounded();
         // Launch the raycast to detect the ceiling
         RaycastCeiling();
+        // Launch the raycast to detect Vertical Walls
+        RaycastVertWalls();
         // Controls if the player is on the elevator
         //Elevator();
 
@@ -213,6 +236,8 @@ public class PlayerMovement : MonoBehaviour
     {        
         if (jumpTriggered)
             JumpTrigger();
+        else if (wallJumpTriggered)
+            WallJumpTrigger();
 
         if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
         {
@@ -255,35 +280,80 @@ public class PlayerMovement : MonoBehaviour
         switch (currentState)
         {
             case PlayerState.Idle:
-                if (isGrounded && direction.x != 0)
-                    currentState = PlayerState.Running;
-                //else if (!isGrounded && rb2D.velocity.y > 0)
-                else if (jumpTriggered)
-                    currentState = PlayerState.Jumping;
+                if (isGrounded)
+                {
+                    if (direction.x != 0)
+                        currentState = PlayerState.Running;
+                    //else if (!isGrounded && rb2D.velocity.y > 0)
+                    else if (jumpTriggered)
+                        currentState = PlayerState.Jumping;
+                }                
                 else if (!isGrounded && rb2D.velocity.y < 0)
                     currentState = PlayerState.Falling;
                 break;
             case PlayerState.Running:
-                if (isGrounded && direction.x == 0)
-                    currentState = PlayerState.Idle;
-                //else if (!isGrounded && rb2D.velocity.y > 0)
-                else if (jumpTriggered)
-                    currentState = PlayerState.Jumping;
+                if (isGrounded)
+                {
+                    if (direction.x == 0)
+                        currentState = PlayerState.Idle;
+                    //else if (!isGrounded && rb2D.velocity.y > 0)
+                    else if (jumpTriggered)
+                        currentState = PlayerState.Jumping;
+                }
                 else if (!isGrounded && rb2D.velocity.y < 0)
                     currentState = PlayerState.Falling;
                 break;
             case PlayerState.Jumping:
+            case PlayerState.WallJumping:
+                if (isGrounded)
+                {
+                    if (/*!jumpPressed &&*/ direction.x == 0)
+                        currentState = PlayerState.Idle;
+                    else if (/*!jumpPressed &&*/ direction.x != 0)
+                        currentState = PlayerState.Running;
+                }
+                else
+                {
+                    if(isWallDetected)
+                        currentState = PlayerState.WallBraking;
+                    else if (rb2D.velocity.y < 0)
+                        currentState = PlayerState.Falling;
+                }                
+                break;
             case PlayerState.Falling:
-                if ((isGrounded && !jumpPressed) && direction.x == 0)                                    
-                    currentState = PlayerState.Idle;                                    
-                else if ((isGrounded && !jumpPressed) && direction.x != 0)                                 
-                    currentState = PlayerState.Running;                                    
-                //if (!isGrounded && rb2D.velocity.y > 0)
-                else if (jumpTriggered)
+                if (jumpTriggered)
                     currentState = PlayerState.Jumping;
-                else if (!isGrounded && rb2D.velocity.y < 0)
-                    currentState = PlayerState.Falling;                
-                break;            
+                else if (isGrounded)
+                {                    
+                    if (/*!jumpPressed &&*/ direction.x == 0)
+                        currentState = PlayerState.Idle;
+                    else if (/*!jumpPressed &&*/ direction.x != 0)
+                        currentState = PlayerState.Running;
+                }
+                else
+                {
+                    if (isWallDetected)
+                        currentState = PlayerState.WallBraking;
+                }
+                break;
+            case PlayerState.WallBraking:
+                if (isGrounded)
+                {
+                    if (/*!jumpPressed &&*/ direction.x == 0)
+                        currentState = PlayerState.Idle;
+                    else if (/*!jumpPressed &&*/ direction.x != 0)
+                        currentState = PlayerState.Running;
+                }
+                else
+                {
+                    if (!isWallDetected)
+                    {
+                        currentState = PlayerState.Falling;
+                    }
+                    if(isWallDetected && wallJumpTriggered)
+                        currentState = PlayerState.WallJumping;
+                }
+                break;
             default:
                 // Default logic
                 break;
@@ -341,10 +411,27 @@ public class PlayerMovement : MonoBehaviour
             cornerDetected = CornerDetected.CornerRight;        
         else        
             cornerDetected = CornerDetected.NoCeiling;
-        
+
         // Raycast Debugging        
         //Debug.DrawRay(cornerLeftCheck.position, Vector2.up * rayCornerLength, Color.green);
         //Debug.DrawRay(cornerRightCheck.position, Vector2.up * rayCornerLength, Color.green);
+    }
+    void RaycastVertWalls()
+    {
+        // Raycast Launching
+        RaycastHit2D raycastWallFwd;
+
+        // Calculate RaycastWallDirection & rayWallOrigin
+        rayWallDir = spriteRenderer.flipX ? Vector2.left : Vector2.right;
+        rayWallOrigin = spriteRenderer.flipX ? wallLeftCheck.position : wallRightCheck.position;
+
+        raycastWallFwd = Physics2D.Raycast(rayWallOrigin, rayWallDir, rayWallLength, wallLayer);
+
+        // Update the Wall detection
+        isWallDetected = raycastWallFwd;
+
+        // Raycast Debugging        
+        //Debug.DrawRay(rayWallOrigin, rayWallDir * rayWallLength, Color.blue);        
     }
     #endregion
 
@@ -414,6 +501,7 @@ public class PlayerMovement : MonoBehaviour
         if (jumpBufferTimer > 0)
             jumpBufferTimer -= Time.deltaTime;
 
+        // If a possible Normal Jump is detected (Either through isGrounded or through CoyoteTime)
         if((isGrounded || coyoteTimerEnabled) && jumpBufferTimer > 0)
         {
             // Set the Jumping flags & Reset the Jumping Timer
@@ -423,6 +511,17 @@ public class PlayerMovement : MonoBehaviour
 
             //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
             jumpHorizSpeed = maxJumpHorizDist / maxJumpHorizTime;
+        }
+        // Otherwise, if a Wall Jump is detected (wallFwdDetected by raycastWallFwd)
+        else if ((!isGrounded && isWallDetected) && jumpBufferTimer > 0)
+        {
+            // Set the Wall Jumping flags & Reset the Jumping Timer
+            wallJumpTriggered = true;
+            jumpingTimer = 0;               // Will be used to calculate the
+                                            // min/maxJumpingTimes on CalculateJumpSpeedMovement
+            
+            jumpHorizSpeed = maxJumpHorizDist /     // In principle will be used this Jump. Horiz. Speed.
+                            maxJumpHorizTime;   
         }
     }
     #endregion
@@ -450,6 +549,19 @@ public class PlayerMovement : MonoBehaviour
             transform.position += new Vector3(0.7f, 0f);
 
         CalculateJumpTimes();
+
+        // Trigger Jump Sound
+        audioSource.PlayOneShot(jumpAudioFx);
+    }
+    void WallJumpTrigger()
+    {
+        wallJumpTriggered = false;
+
+        //CalculateJumpTimes();               // In principle we'll use the same input that
+                                            // we use for the normal Jump
+
+        Vector2 wallForce = (-rayWallDir + Vector2.up) * wallJumpForce;        
+        rb2D.AddForce(wallForce);
 
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
@@ -548,19 +660,27 @@ public class PlayerMovement : MonoBehaviour
     private void ChangeGravity()
     {
         // Gravity will be heavier when the player is falling down
-        if (rb2D.velocity.y < 0)
+        if (isWallDetected)
         {
-            if (isDead)
-                rb2D.gravityScale = 5f;
-            else
-                rb2D.gravityScale = 2.5f;
+            if (rb2D.velocity.y < 0)
+                rb2D.gravityScale = 1.5f;            
         }
         else
         {
-            if (isDead)
-                rb2D.gravityScale = 2f;
+            if (rb2D.velocity.y < 0)
+            {
+                if (isDead)
+                    rb2D.gravityScale = 5f;
+                else
+                    rb2D.gravityScale = 2.5f;
+            }
             else
-                rb2D.gravityScale = 1f;
+            {
+                if (isDead)
+                    rb2D.gravityScale = 2f;
+                else
+                    rb2D.gravityScale = 1f;
+            }
         }
     }
     public void ResetVelocity()
