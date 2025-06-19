@@ -69,6 +69,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] LayerMask groundLayer;  //Ground Layer
     [SerializeField] float rayLength;       //Raycast Length
     [SerializeField] bool isGrounded;       //Ground touching flag
+    [SerializeField] private bool isRayGroundDetected;       // Aux. Ray Ground var
+    [SerializeField] private bool isJumpTriggered;           // Aux. var 
     public bool IsGrounded => isGrounded;
     private bool wasGrounded;               //isGrounded value of previous frame
 
@@ -81,6 +83,11 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float wallJumpForce;       // Jumping applied Force
     Vector2 rayWallOrigin;
     Vector2 rayWallDir;
+    [SerializeField] private bool isRayWallDetected;       // Aux. Ray Wall var
+    [SerializeField] private bool isWallJumpTriggered;     // Aux. var 
+
+    [Header("Platform")]
+    [SerializeField] LayerMask platformLayer;
 
     #region Enums    
     private enum CornerDetected
@@ -201,6 +208,15 @@ public class PlayerMovement : MonoBehaviour
         // Check Jump Input Buffer
         CheckJumpInputBuffer();
 
+        // Update the isGrounded & isWallDetected Values
+        isGrounded = isRayGroundDetected && !isJumpTriggered;
+        isWallDetected = isRayWallDetected && !isWallJumpTriggered;
+
+
+        if (!isGrounded && jumpPressed &&
+            (currentState == PlayerState.Idle || currentState == PlayerState.Running))
+            Debug.Log("isGrounded es FALSO & Player State = " + currentState);
+
         // Update the player state
         UpdatePlayerState();        
 
@@ -234,10 +250,10 @@ public class PlayerMovement : MonoBehaviour
     }
     void FixedUpdate()
     {        
-        if (jumpTriggered)
-            JumpTrigger();
-        else if (wallJumpTriggered)
-            WallJumpTrigger();
+        //if (jumpTriggered)
+        //    TriggerJump();
+        //else if (wallJumpTriggered)
+        //    WallJumpTrigger();
 
         if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
         {
@@ -286,21 +302,27 @@ public class PlayerMovement : MonoBehaviour
                         currentState = PlayerState.Running;
                     //else if (!isGrounded && rb2D.velocity.y > 0)
                     else if (jumpTriggered)
-                        currentState = PlayerState.Jumping;
+                    {
+                        TriggerJump();
+                        currentState = PlayerState.Jumping;                        
+                    }
                 }                
-                else if (!isGrounded && rb2D.velocity.y < 0)
+                else if (rb2D.velocity.y < 0)
                     currentState = PlayerState.Falling;
                 break;
-            case PlayerState.Running:
+            case PlayerState.Running:  
                 if (isGrounded)
                 {
                     if (direction.x == 0)
                         currentState = PlayerState.Idle;
                     //else if (!isGrounded && rb2D.velocity.y > 0)
                     else if (jumpTriggered)
-                        currentState = PlayerState.Jumping;
+                    {
+                        TriggerJump();
+                        currentState = PlayerState.Jumping;                        
+                    }                                            
                 }
-                else if (!isGrounded && rb2D.velocity.y < 0)
+                else if (rb2D.velocity.y < 0)
                     currentState = PlayerState.Falling;
                 break;
             case PlayerState.Jumping:
@@ -314,15 +336,21 @@ public class PlayerMovement : MonoBehaviour
                 }
                 else
                 {
-                    if(isWallDetected)
+                    if (isWallDetected)
+                    {
                         currentState = PlayerState.WallBraking;
+                        Debug.Log("Switched to WallBraking state");
+                    }                        
                     else if (rb2D.velocity.y < 0)
                         currentState = PlayerState.Falling;
                 }                
                 break;
             case PlayerState.Falling:
                 if (jumpTriggered)
-                    currentState = PlayerState.Jumping;
+                {
+                    TriggerJump();
+                    currentState = PlayerState.Jumping;                    
+                }                    
                 else if (isGrounded)
                 {                    
                     if (/*!jumpPressed &&*/ direction.x == 0)
@@ -351,7 +379,11 @@ public class PlayerMovement : MonoBehaviour
                         currentState = PlayerState.Falling;
                     }
                     if(isWallDetected && wallJumpTriggered)
+                    {
+                        WallJumpTrigger();
                         currentState = PlayerState.WallJumping;
+                        Debug.Log("Switched to WallJumping state");
+                    }                        
                 }
                 break;
             default:
@@ -373,11 +405,11 @@ public class PlayerMovement : MonoBehaviour
 
         // Raycast Launching
         RaycastHit2D[] raycastsHit2D = new RaycastHit2D[groundChecks.Count()];
-        isGrounded = false;
+        isRayGroundDetected = false;
         for (int i = 0; i < groundChecks.Count(); i++)
         {
-            raycastsHit2D[i] = Physics2D.Raycast(groundChecks[i].position, Vector2.down, rayLength, groundLayer);
-            isGrounded |= raycastsHit2D[i];
+            raycastsHit2D[i] = Physics2D.Raycast(groundChecks[i].position, Vector2.down, rayLength, (int)groundLayer | (int)platformLayer);
+            isRayGroundDetected |= raycastsHit2D[i];
         }        
 
         // Raycast Debugging
@@ -399,8 +431,8 @@ public class PlayerMovement : MonoBehaviour
         RaycastHit2D raycastCornerRight;        
 
         //cornerDetected = false;        
-        raycastCornerLeft = Physics2D.Raycast(cornerLeftCheck.position, Vector2.up, rayCornerLength, groundLayer);
-        raycastCornerRight = Physics2D.Raycast(cornerRightCheck.position, Vector2.up, rayCornerLength, groundLayer);
+        raycastCornerLeft = Physics2D.Raycast(cornerLeftCheck.position, Vector2.up, rayCornerLength, (int)groundLayer | (int)platformLayer);
+        raycastCornerRight = Physics2D.Raycast(cornerRightCheck.position, Vector2.up, rayCornerLength, (int)groundLayer | (int)platformLayer);
 
         // Update the corner detection
         if (raycastCornerLeft && raycastCornerRight)       
@@ -428,7 +460,7 @@ public class PlayerMovement : MonoBehaviour
         raycastWallFwd = Physics2D.Raycast(rayWallOrigin, rayWallDir, rayWallLength, wallLayer);
 
         // Update the Wall detection
-        isWallDetected = raycastWallFwd;
+        isRayWallDetected = raycastWallFwd;
 
         // Raycast Debugging        
         //Debug.DrawRay(rayWallOrigin, rayWallDir * rayWallLength, Color.blue);        
@@ -503,7 +535,7 @@ public class PlayerMovement : MonoBehaviour
 
         // If a possible Normal Jump is detected (Either through isGrounded or through CoyoteTime)
         if((isGrounded || coyoteTimerEnabled) && jumpBufferTimer > 0)
-        {
+        {            
             // Set the Jumping flags & Reset the Jumping Timer
             jumpTriggered = true;            
             jumpingTimer = 0;
@@ -517,11 +549,12 @@ public class PlayerMovement : MonoBehaviour
         {
             // Set the Wall Jumping flags & Reset the Jumping Timer
             wallJumpTriggered = true;
-            jumpingTimer = 0;               // Will be used to calculate the
+            //jumpingTimer = 0;               // Will be used to calculate the
                                             // min/maxJumpingTimes on CalculateJumpSpeedMovement
-            
-            jumpHorizSpeed = maxJumpHorizDist /     // In principle will be used this Jump. Horiz. Speed.
-                            maxJumpHorizTime;   
+            jumpBufferTimer = 0;
+
+            //jumpHorizSpeed = maxJumpHorizDist /     // In principle will be used this Jump. Horiz. Speed.
+            //                maxJumpHorizTime;
         }
     }
     #endregion
@@ -538,8 +571,13 @@ public class PlayerMovement : MonoBehaviour
     #endregion
 
     #region Movement
-    void JumpTrigger()
+    void TriggerJump()
     {
+        // Enable the isJumpTriggered for a certain time;
+        isJumpTriggered = true;
+        Invoke(nameof(DisableIsJumpTriggered),0.2f);
+
+        // Reset the jumpTriggered Flag
         jumpTriggered = false;
 
         // Fix Player's position due to corner detection
@@ -553,18 +591,35 @@ public class PlayerMovement : MonoBehaviour
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
     }
+    void DisableIsJumpTriggered() 
+    {
+        isJumpTriggered = false;
+    }    
     void WallJumpTrigger()
     {
+        // Enable the isWallJumpTriggered for a certain time;
+        isWallJumpTriggered = true;
+        Invoke(nameof(DisableIsWallJumpTriggered), 0.2f);
+
+        // Reset the wallJumpTriggered Flag
         wallJumpTriggered = false;
 
         //CalculateJumpTimes();               // In principle we'll use the same input that
                                             // we use for the normal Jump
 
-        Vector2 wallForce = (-rayWallDir + Vector2.up) * wallJumpForce;        
+        Vector2 wallForce = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * wallJumpForce) + 
+                            (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * wallJumpForce);        
         rb2D.AddForce(wallForce);
 
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
+
+        // Flip Sprite
+        //spriteRenderer.flipX = !spriteRenderer.flipX;
+    }
+    void DisableIsWallJumpTriggered()
+    {
+        isWallJumpTriggered = false;
     }
     void CalculateJumpTimes()
     {
@@ -612,7 +667,9 @@ public class PlayerMovement : MonoBehaviour
             }
         }
         else if (currentState == PlayerState.Falling)
-            rb2DJumpVelY = rb2D.velocity.y;
+        {
+            rb2DJumpVelY = rb2D.velocity.y;            
+        }            
 
         // Jumping force through Add Force
         //rb2D.AddForce(Vector2.up*jumpForce);                
@@ -635,9 +692,13 @@ public class PlayerMovement : MonoBehaviour
             //    playerDirVelocity *= 0.8f;
             //    targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
             //    break;
+            case PlayerState.WallJumping:
+                targetVelocity = rb2D.velocity;
+                break;
         }
 
-        // Updates the correspondent new velocity                
+        // Updates the correspondent new velocity
+        // Jumping or Falling States
         if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
         {
             // Don't smooth the Y-axis while jumping
@@ -650,6 +711,15 @@ public class PlayerMovement : MonoBehaviour
                             targetVelocity.y);
             //rb2D.velocity = targetVelocity;
         }
+        else if (currentState == PlayerState.WallBraking)
+        {
+            rb2D.velocity = new Vector2(0,rb2D.velocity.y);
+        }
+        else if (currentState == PlayerState.WallJumping)
+        {
+            rb2D.velocity = targetVelocity;
+        }
+        // Idle or Running States
         else
         {
             // Smooth both axis on normal states
@@ -659,29 +729,25 @@ public class PlayerMovement : MonoBehaviour
     }
     private void ChangeGravity()
     {
-        // Gravity will be heavier when the player is falling down
-        if (isWallDetected)
+        //Gravity will be heavier when the player is falling down
+        if (currentState == PlayerState.WallBraking)
+        {            
+            rb2D.gravityScale = 1.2f;
+        }        
+        else if (currentState == PlayerState.Falling)
         {
-            if (rb2D.velocity.y < 0)
-                rb2D.gravityScale = 1.5f;            
+            if (isDead)
+                rb2D.gravityScale = 5f;
+            else
+                rb2D.gravityScale = 2.5f;
         }
         else
         {
-            if (rb2D.velocity.y < 0)
-            {
-                if (isDead)
-                    rb2D.gravityScale = 5f;
-                else
-                    rb2D.gravityScale = 2.5f;
-            }
+            if (isDead)
+                rb2D.gravityScale = 2f;
             else
-            {
-                if (isDead)
-                    rb2D.gravityScale = 2f;
-                else
-                    rb2D.gravityScale = 1f;
-            }
-        }
+                rb2D.gravityScale = 1f;
+        }        
     }
     public void ResetVelocity()
     {
