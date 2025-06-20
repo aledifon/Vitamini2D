@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using System.Linq;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
+using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -50,7 +51,8 @@ public class PlayerMovement : MonoBehaviour
     [Header("Input Buffer")]
     [SerializeField] private float jumpBufferTime;
     [SerializeField] private float jumpBufferTimer;
-    
+    [SerializeField] private bool jumpBufferTimerEnabled;
+
     // UI        
     [Header("Acorn")]
     [SerializeField] private TextMeshProUGUI textAcornUI;
@@ -70,7 +72,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float rayLength;       //Raycast Length
     [SerializeField] bool isGrounded;       //Ground touching flag
     [SerializeField] private bool isRayGroundDetected;       // Aux. Ray Ground var
-    [SerializeField] private bool isJumpTriggered;           // Aux. var 
+    [SerializeField] private bool isRecentlyJumping;           // Aux. var 
     public bool IsGrounded => isGrounded;
     private bool wasGrounded;               //isGrounded value of previous frame
 
@@ -84,7 +86,7 @@ public class PlayerMovement : MonoBehaviour
     Vector2 rayWallOrigin;
     Vector2 rayWallDir;
     [SerializeField] private bool isRayWallDetected;       // Aux. Ray Wall var
-    [SerializeField] private bool isWallJumpTriggered;     // Aux. var 
+    [SerializeField] private bool isRecentlyWallJumping;     // Aux. var 
 
     [Header("Platform")]
     [SerializeField] LayerMask platformLayer;
@@ -204,24 +206,18 @@ public class PlayerMovement : MonoBehaviour
         textAcornUI.text = NumAcorn.ToString();        
     }
     private void Update()
+    {                       
+        // Update the Input player velocity        
+        //inputPlayerVelocity = new Vector2(horizontal * speed, 0);
+        // Update the target Velocity
+        //targetVelocity += rb2D.velocity + inputPlayerVelocity;
+                        
+    }
+    void FixedUpdate()
     {
-        // Check Jump Input Buffer
-        CheckJumpInputBuffer();
+        // Last State vars Update
+        wasGrounded = isGrounded;        
 
-        // Update the isGrounded & isWallDetected Values
-        isGrounded = isRayGroundDetected && !isJumpTriggered;
-        isWallDetected = isRayWallDetected && !isWallJumpTriggered;
-
-
-        if (!isGrounded && jumpPressed &&
-            (currentState == PlayerState.Idle || currentState == PlayerState.Running))
-            Debug.Log("isGrounded es FALSO & Player State = " + currentState);
-
-        // Update the player state
-        UpdatePlayerState();        
-
-        // Update the player's gravity when falling down
-        ChangeGravity();
         // Launch the raycast to detect the ground
         RaycastGrounded();
         // Launch the raycast to detect the ceiling
@@ -231,37 +227,36 @@ public class PlayerMovement : MonoBehaviour
         // Controls if the player is on the elevator
         //Elevator();
 
+        // Update the isGrounded & isWallDetected Values
+        isGrounded = isRayGroundDetected && !isRecentlyJumping;
+        isWallDetected = isRayWallDetected && !isRecentlyWallJumping;
+
+        // Check Jump Input Buffer
+        CheckJumpTrigger();
+        if (jumpBufferTimerEnabled)
+            UdpateJumpBufferTimer();
+
+        // Update the player state
+        UpdatePlayerState();
+
         // Coyote Timer
         CoyoteTimerCheck();
         if (coyoteTimerEnabled)
-            CoyoteTimerUpdate();
+            UdpateCoyoteTimer();
 
-        // Jumping Animation
-        AnimatingJumpìng();
+        // Update the player's gravity when falling down
+        ChangeGravity();
 
-        // Update the Input player velocity        
-        //inputPlayerVelocity = new Vector2(horizontal * speed, 0);
-        // Update the target Velocity
-        //targetVelocity += rb2D.velocity + inputPlayerVelocity;
-        
-        // Last State vars Update
-        wasGrounded = isGrounded;
-        //lastFlipState = spriteRenderer.flipX;
-    }
-    void FixedUpdate()
-    {        
-        //if (jumpTriggered)
-        //    TriggerJump();
-        //else if (wallJumpTriggered)
-        //    WallJumpTrigger();
-
+        // Jump & Movement calculations
         if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
         {
             jumpingTimer += Time.fixedDeltaTime;
             CalculateJumpSpeedMovement();            
         }
-
         UpdateMovement();
+
+        // Jumping Animation
+        AnimatingJumpìng();
     }
     // Collisions
     private void OnCollisionEnter2D(Collision2D collision)
@@ -307,7 +302,7 @@ public class PlayerMovement : MonoBehaviour
                         currentState = PlayerState.Jumping;                        
                     }
                 }                
-                else if (rb2D.velocity.y < 0)
+                else if (rb2D.velocity.y < Mathf.Epsilon)
                     currentState = PlayerState.Falling;
                 break;
             case PlayerState.Running:  
@@ -322,27 +317,29 @@ public class PlayerMovement : MonoBehaviour
                         currentState = PlayerState.Jumping;                        
                     }                                            
                 }
-                else if (rb2D.velocity.y < 0)
-                    currentState = PlayerState.Falling;
+                else if (rb2D.velocity.y < Mathf.Epsilon)
+                    currentState = PlayerState.Falling;                
                 break;
             case PlayerState.Jumping:
             case PlayerState.WallJumping:
                 if (isGrounded)
                 {
-                    if (/*!jumpPressed &&*/ direction.x == 0)
-                        currentState = PlayerState.Idle;
-                    else if (/*!jumpPressed &&*/ direction.x != 0)
-                        currentState = PlayerState.Running;
+                    //if (/*!jumpPressed &&*/ direction.x == 0)
+                    //    currentState = PlayerState.Idle;
+                    //else if (/*!jumpPressed &&*/ direction.x != 0)
+                    //    currentState = PlayerState.Running;
+
+                    currentState = PlayerState.Idle;
                 }
                 else
-                {
+                {                    
                     if (isWallDetected)
                     {
                         currentState = PlayerState.WallBraking;
                         Debug.Log("Switched to WallBraking state");
                     }                        
-                    else if (rb2D.velocity.y < 0)
-                        currentState = PlayerState.Falling;
+                    else if (!isRecentlyJumping && rb2D.velocity.y < Mathf.Epsilon)                    
+                        currentState = PlayerState.Falling;                                                                
                 }                
                 break;
             case PlayerState.Falling:
@@ -352,25 +349,28 @@ public class PlayerMovement : MonoBehaviour
                     currentState = PlayerState.Jumping;                    
                 }                    
                 else if (isGrounded)
-                {                    
-                    if (/*!jumpPressed &&*/ direction.x == 0)
-                        currentState = PlayerState.Idle;
-                    else if (/*!jumpPressed &&*/ direction.x != 0)
-                        currentState = PlayerState.Running;
-                }
-                else
                 {
-                    if (isWallDetected)
-                        currentState = PlayerState.WallBraking;
+                    //if (/*!jumpPressed &&*/ direction.x == 0)
+                    //    currentState = PlayerState.Idle;
+                    //else if (/*!jumpPressed &&*/ direction.x != 0)
+                    //    currentState = PlayerState.Running;
+
+                    currentState = PlayerState.Idle;
                 }
+                else if (isWallDetected)
+                {                
+                    currentState = PlayerState.WallBraking;
+                }                
                 break;
             case PlayerState.WallBraking:
                 if (isGrounded)
                 {
-                    if (/*!jumpPressed &&*/ direction.x == 0)
-                        currentState = PlayerState.Idle;
-                    else if (/*!jumpPressed &&*/ direction.x != 0)
-                        currentState = PlayerState.Running;
+                    //if (/*!jumpPressed &&*/ direction.x == 0)
+                    //    currentState = PlayerState.Idle;
+                    //else if (/*!jumpPressed &&*/ direction.x != 0)
+                    //    currentState = PlayerState.Running;
+
+                    currentState = PlayerState.Idle;
                 }
                 else
                 {
@@ -378,7 +378,7 @@ public class PlayerMovement : MonoBehaviour
                     {
                         currentState = PlayerState.Falling;
                     }
-                    if(isWallDetected && wallJumpTriggered)
+                    else if(wallJumpTriggered)
                     {
                         WallJumpTrigger();
                         currentState = PlayerState.WallJumping;
@@ -468,31 +468,27 @@ public class PlayerMovement : MonoBehaviour
     #endregion
 
     #region Coyote Time
-    private void CoyoteTimerUpdate()
+    private void UdpateCoyoteTimer()
     {
+        // Coyote Timer update
+        coyoteTimer += Time.fixedDeltaTime;
+
         // Reset Coyote Timer
         if (coyoteTimer >= maxCoyoteTime)
         {
             coyoteTimerEnabled = false;
-            coyoteTimer = 0;
-        }           
-        // Coyote Timer update
-        else        
-            coyoteTimer += Time.fixedDeltaTime;
-        
+            coyoteTimer = 0f;
+        }                           
     }
     private void CoyoteTimerCheck()
-    {
-        // Coyote Timer will be disabled as long as the player is on the Ground
-        if(isGrounded)
-        {
-            coyoteTimerEnabled = false;
-            coyoteTimer = 0;
-        }
+    {        
         // Coyote Timer will be triggered when the player stop touching the ground
-        else if ((wasGrounded && !isGrounded) && currentState != PlayerState.Jumping)
+        if ((wasGrounded && !isGrounded) /*&& currentState == PlayerState.Falling*/ && !coyoteTimerEnabled) 
+        {
             coyoteTimerEnabled = true;
-    }
+            coyoteTimer = 0f;
+        }            
+    }        
     #endregion
 
     #region Input Player 
@@ -501,7 +497,9 @@ public class PlayerMovement : MonoBehaviour
         if (context.phase == InputActionPhase.Performed)
         {
             jumpPressed = true;
-            jumpBufferTimer = jumpBufferTime;
+
+            // Enable the Jump Buffer Timer            
+            SetJumpBufferTimer();
         }
 
         //if (context.phase == InputActionPhase.Performed && (isGrounded || coyoteTimerEnabled))
@@ -528,35 +526,56 @@ public class PlayerMovement : MonoBehaviour
         FlipSprite(direction.x);       
         AnimatingRunning(direction.x);
     }
-    private void CheckJumpInputBuffer()
+    #region Jumping Buffer    
+    private void UdpateJumpBufferTimer()
     {
-        if (jumpBufferTimer > 0)
-            jumpBufferTimer -= Time.deltaTime;
+        // Jump Buffer Timer update
+        jumpBufferTimer -= Time.fixedDeltaTime;
 
+        // Reset Jump Buffer Timer
+        if (jumpBufferTimer <= 0)
+        {
+            ResetJumpBufferTimer();
+        }
+    }
+    private void SetJumpBufferTimer()
+    {        
+        jumpBufferTimerEnabled = true;
+        jumpBufferTimer = jumpBufferTime;
+    }
+    private void ResetJumpBufferTimer()
+    {
+        jumpBufferTimerEnabled = false;
+        jumpBufferTimer = 0f;
+    }
+    private void CheckJumpTrigger()
+    {        
         // If a possible Normal Jump is detected (Either through isGrounded or through CoyoteTime)
-        if((isGrounded || coyoteTimerEnabled) && jumpBufferTimer > 0)
+        if((isGrounded || coyoteTimerEnabled) && jumpBufferTimerEnabled)
         {            
             // Set the Jumping flags & Reset the Jumping Timer
             jumpTriggered = true;            
             jumpingTimer = 0;
-            jumpBufferTimer = 0;
+
+            ResetJumpBufferTimer();            
 
             //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
             jumpHorizSpeed = maxJumpHorizDist / maxJumpHorizTime;
         }
         // Otherwise, if a Wall Jump is detected (wallFwdDetected by raycastWallFwd)
-        else if ((!isGrounded && isWallDetected) && jumpBufferTimer > 0)
+        else if ((!isGrounded && isWallDetected) && jumpBufferTimerEnabled)
         {
             // Set the Wall Jumping flags & Reset the Jumping Timer
             wallJumpTriggered = true;
             //jumpingTimer = 0;               // Will be used to calculate the
                                             // min/maxJumpingTimes on CalculateJumpSpeedMovement
-            jumpBufferTimer = 0;
+            ResetJumpBufferTimer();
 
             //jumpHorizSpeed = maxJumpHorizDist /     // In principle will be used this Jump. Horiz. Speed.
             //                maxJumpHorizTime;
         }
     }
+    #endregion
     #endregion
 
     #region RigidBody
@@ -573,12 +592,13 @@ public class PlayerMovement : MonoBehaviour
     #region Movement
     void TriggerJump()
     {
-        // Enable the isJumpTriggered for a certain time;
-        isJumpTriggered = true;
-        Invoke(nameof(DisableIsJumpTriggered),0.2f);
-
-        // Reset the jumpTriggered Flag
+        // Clear the jumpTriggered Flag (Avoid to enter on undesired States)
         jumpTriggered = false;
+
+        // Enable the isJumpTriggered for a certain time;
+        isRecentlyJumping = true;
+        //Invoke(nameof(DisableIsJumpTriggered),0.2f);
+        StartCoroutine(nameof(DisableJumpTriggerFlag));        
 
         // Fix Player's position due to corner detection
         if (cornerDetected == CornerDetected.CornerLeft)
@@ -591,18 +611,24 @@ public class PlayerMovement : MonoBehaviour
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
     }
-    void DisableIsJumpTriggered() 
+    IEnumerator DisableJumpTriggerFlag() 
     {
-        isJumpTriggered = false;
-    }    
+        yield return new WaitForSeconds(0.2f);
+        isRecentlyJumping = false;
+    }
+    //void DisableJumpTriggerFlag()
+    //{
+    //    isJumpTriggered = false;
+    //}
     void WallJumpTrigger()
     {
-        // Enable the isWallJumpTriggered for a certain time;
-        isWallJumpTriggered = true;
-        Invoke(nameof(DisableIsWallJumpTriggered), 0.2f);
-
-        // Reset the wallJumpTriggered Flag
+        // Clear the wallJumpTriggered Flag (Avoid to enter on undesired States)
         wallJumpTriggered = false;
+
+        // Enable the isWallJumpTriggered for a certain time;
+        isRecentlyWallJumping = true;
+        //Invoke(nameof(DisableWallJumpTriggerFlag), 0.2f);        
+        StartCoroutine(nameof(DisableWallJumpTriggerFlag));
 
         //CalculateJumpTimes();               // In principle we'll use the same input that
                                             // we use for the normal Jump
@@ -616,11 +642,16 @@ public class PlayerMovement : MonoBehaviour
 
         // Flip Sprite
         //spriteRenderer.flipX = !spriteRenderer.flipX;
-    }
-    void DisableIsWallJumpTriggered()
+    }    
+    IEnumerator DisableWallJumpTriggerFlag()
     {
-        isWallJumpTriggered = false;
+        yield return new WaitForSeconds(0.2f);
+        isRecentlyWallJumping = false;
     }
+    //void DisableWallJumpTriggerFlag()
+    //{
+    //    isWallJumpTriggered = false;
+    //}
     void CalculateJumpTimes()
     {
         // Solve the MRUA equation--> h = v0*t - (1/2)g*(t^2);
