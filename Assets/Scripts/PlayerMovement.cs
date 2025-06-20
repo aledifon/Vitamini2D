@@ -380,7 +380,7 @@ public class PlayerMovement : MonoBehaviour
                     }
                     else if(wallJumpTriggered)
                     {
-                        WallJumpTrigger();
+                        TriggerWallJump();
                         currentState = PlayerState.WallJumping;
                         Debug.Log("Switched to WallJumping state");
                     }                        
@@ -620,7 +620,7 @@ public class PlayerMovement : MonoBehaviour
     //{
     //    isJumpTriggered = false;
     //}
-    void WallJumpTrigger()
+    void TriggerWallJump()
     {
         // Clear the wallJumpTriggered Flag (Avoid to enter on undesired States)
         wallJumpTriggered = false;
