@@ -22,8 +22,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] bool jumpTriggered;    // Jumping applied Force
     [SerializeField] bool wallJumpTriggered;    // Jumping applied Force
 
-    [SerializeField] float minJumpDist;     // Min. Jumping Dist. Uds.
-    [SerializeField] float maxJumpDist;     // Min. Jumping Dist. Uds.    
+    [SerializeField] float minJumpVertDist;     // Min. Vert. Jumping Dist. Uds.
+    [SerializeField] float maxJumpVertDist;     // Max. Vert. Jumping Dist. Uds.    
     [SerializeField] float jumpingTimer;    // Jumping Timer
     private float minJumpingTime;           // Min & Max Jumping Times (in func. of Jumping distance. & Jump. speed)                                            
     private float maxJumpingTime;
@@ -33,6 +33,16 @@ public class PlayerMovement : MonoBehaviour
     //[SerializeField] private float maxJumpHorizTimer; // Horizontal Jumping Timer                                                      
     [SerializeField] private float maxJumpHorizTime;         // Max Jumping time on horizontal Movement
                                                              // (Calculated in func. of maxJumpDistance & Player's speed)        
+
+    [Header("Wall Jump")]
+    [SerializeField] float wallJumpVertSpeed;           // Wall Jumping applied Speed
+    [SerializeField] float wallJumpHorizSpeed;              // Wall Jumping applied Speed    
+    [SerializeField] float wallJumpVertDist;                     // Wall Jumping Vert. Dist. Uds.
+    [SerializeField] private float wallJumpHorizDist;    // Max allowed Horizontal Wall Jumping distance    
+    [SerializeField] private float wallJumpHorizTime;    // Max Jumping time on horizontal Movement
+    private float wallJumpingVertTime;                          // Wall Jumping Time (in func. of Wall Jumping distance. & Wall Jump. speed)                                                    
+
+    Vector2 wallJumpSpeedVector;
 
     // Coyote Time vars
     [Header("Coyote Time")]
@@ -82,9 +92,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] Transform wallRightCheck;     //Raycast origin point 
     [SerializeField] LayerMask wallLayer;       //Wall Layer
     [SerializeField] float rayWallLength;    //Raycast Wall Fwd Length
-    [SerializeField] bool isWallDetected;       //Wall Fwd detection flag
-    [SerializeField] float wallJumpForce;       // Jumping applied Force
-    Vector2 wallSpeedVector;
+    [SerializeField] bool isWallDetected;       //Wall Fwd detection flag    
     Vector2 rayWallOrigin;
     Vector2 rayWallDir;
     [SerializeField] private bool isRayWallDetected;       // Aux. Ray Wall var
@@ -339,12 +347,18 @@ public class PlayerMovement : MonoBehaviour
                 //Debug.Log("From Running state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Jumping:
+                if (rb2D.velocity.y < 0 && !isRecentlyJumping)
+                {
+                    currentState = PlayerState.Falling;
+                }
+                //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                break;
             case PlayerState.WallJumping:
-                if (rb2D.velocity.y < 0 && !isRecentlyJumping) 
+                if (rb2D.velocity.y < 0 && !isRecentlyWallJumping) 
                 {                                        
                     currentState = PlayerState.Falling;                    
                 }                
-                //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                //Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Falling:
                 if (jumpTriggered)
@@ -581,8 +595,8 @@ public class PlayerMovement : MonoBehaviour
             // (Will be used to calculate the min/maxJumpingTimes on CalculateJumpSpeedMovement)  
             ResetJumpTimer();
             //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time            
-            jumpHorizSpeed = maxJumpHorizDist /
-                            maxJumpHorizTime;
+            wallJumpHorizSpeed = wallJumpHorizDist /
+                                wallJumpHorizTime;
 
             // Register a Wall Jumping Trigger Request
             wallJumpTriggered = true;
@@ -612,7 +626,7 @@ public class PlayerMovement : MonoBehaviour
 
     #region Jumping
     void TriggerJump()
-    {
+    {        
         // Clear the jumpTriggered Flag (Avoid to enter on undesired States)
         jumpTriggered = false;
 
@@ -643,6 +657,8 @@ public class PlayerMovement : MonoBehaviour
     //}
     void TriggerWallJump()
     {
+        Debug.Log("Wall Jump Triggered");
+
         // Clear the wallJumpTriggered Flag (Avoid to enter on undesired States)
         wallJumpTriggered = false;
 
@@ -651,8 +667,8 @@ public class PlayerMovement : MonoBehaviour
         //Invoke(nameof(DisableWallJumpTriggerFlag), 0.2f);        
         StartCoroutine(nameof(DisableWallJumpTriggerFlag));
 
-        //CalculateJumpTimes();               // In principle we'll use the same input that
-        // we use for the normal Jump
+        CalculateWallJumpTimes();               // In principle we'll use the same input that
+                                                // we use for the normal Jump
 
         // Reset Rb velocity to avoid inconsistencies
         rb2D.velocity = Vector2.zero;
@@ -660,10 +676,13 @@ public class PlayerMovement : MonoBehaviour
         //wallSpeedVector = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * wallJumpForce) +
         //                    (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * wallJumpForce);
         
-        wallSpeedVector = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * jumpHorizSpeed) +
-                            (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * jumpHorizSpeed);
+        wallJumpSpeedVector = (-rayWallDir * wallJumpHorizSpeed) +
+                            (Vector2.up * wallJumpVertSpeed);        
+
         //rb2D.AddForce(wallForce, ForceMode2D.Impulse);
-        //rb2D.velocity = wallSpeedVector;
+        rb2D.velocity = wallJumpSpeedVector;
+
+        Debug.Log(wallJumpSpeedVector);
 
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
@@ -684,8 +703,8 @@ public class PlayerMovement : MonoBehaviour
     {
         // Solve the MRUA equation--> h = v0*t - (1/2)g*(t^2);
 
-        float discrimMinJumpTime = Mathf.Pow(jumpVertSpeed, 2) - 2 * Physics2D.gravity.y * minJumpDist;
-        float discrimMaxJumpTime = Mathf.Pow(jumpVertSpeed, 2) - 2 * Physics2D.gravity.y * maxJumpDist;
+        float discrimMinJumpTime = Mathf.Pow(jumpVertSpeed, 2) - 2 * Physics2D.gravity.y * minJumpVertDist;
+        float discrimMaxJumpTime = Mathf.Pow(jumpVertSpeed, 2) - 2 * Physics2D.gravity.y * maxJumpVertDist;
 
         if (discrimMinJumpTime >= 0)
             minJumpingTime = (jumpVertSpeed - Mathf.Sqrt(discrimMinJumpTime)) / Physics2D.gravity.y;
@@ -702,6 +721,21 @@ public class PlayerMovement : MonoBehaviour
         // Max Jumping Time Correction
         maxJumpingTime += 0.03f;
     }
+    void CalculateWallJumpTimes()
+    {
+        // Solve the MRUA equation--> h = v0*t - (1/2)g*(t^2);
+
+        float discrimWallJumpTime = Mathf.Pow(wallJumpVertSpeed, 2) - 2 * Physics2D.gravity.y * wallJumpVertDist;        
+
+        if (discrimWallJumpTime >= 0)
+            wallJumpingVertTime = (wallJumpVertSpeed - Mathf.Sqrt(discrimWallJumpTime)) / Physics2D.gravity.y;
+        else
+            // Wall Jumping not posible, not enought initial speed
+            Debug.LogError("The Wall jumping is not posible with the initial speed and desired height");        
+
+        // Wall Jumping Time Correction
+        //wallJumpingTime += 0.03f;
+    }
     #endregion
 
     #region Movement
@@ -717,8 +751,18 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Falling:
                 rb2DDirVelX = direction.x * jumpHorizSpeed;
                 break;
-            case PlayerState.WallJumping:
-                rb2DDirVelX = wallSpeedVector.x;
+            case PlayerState.WallJumping:                
+                // X-velocity starts decreasing after a certain time
+                if (jumpingTimer >= wallJumpHorizTime)
+                {
+                    rb2DDirVelX *= 0.5f;
+                }
+                else
+                {
+                    // Jumping force through velocity
+                    rb2DDirVelX = wallJumpSpeedVector.x;
+                    //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+                }
                 break;
             case PlayerState.WallBraking:
                 rb2DDirVelX = 0;
@@ -757,10 +801,17 @@ public class PlayerMovement : MonoBehaviour
                 }
                 break;            
             case PlayerState.WallJumping:
-
-                // TO IMPLEMENT
-                // rb2DJumpVelY = wallSpeedVector.y; ???
-
+                // Y-velocity starts decreasing after a certain time
+                if (jumpingTimer >= wallJumpingVertTime)
+                {                    
+                    rb2DJumpVelY *= 0.5f;                                       
+                }
+                else
+                {
+                    // Jumping force through velocity
+                    rb2DJumpVelY = wallJumpSpeedVector.y;
+                    //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+                }
                 break;
             default:
                 break;
@@ -799,14 +850,14 @@ public class PlayerMovement : MonoBehaviour
                 //rb2D.velocity = Vector2.Lerp(rb2D.velocity, targetVelocity, Time.fixedDeltaTime * lerpSpeed);
                 break;
             case PlayerState.WallJumping:
-                if (!isRecentlyWallJumping)
-                {
+                //if (!isRecentlyWallJumping)
+                //{
                     rb2D.velocity = targetVelocity;
                     // Try the same as on Jumping and Falling States? (To check the feeling)
                     //rb2D.velocity = new Vector2(
                     //        Mathf.Lerp(rb2D.velocity.x, targetVelocity.x, Time.fixedDeltaTime * lerpSpeed),
                     //        targetVelocity.y);
-                }
+                //}
                 break;
             default:
                 break;

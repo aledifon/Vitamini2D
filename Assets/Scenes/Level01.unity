@@ -12917,11 +12917,16 @@ MonoBehaviour:
   jumpHorizSpeed: 0
   jumpTriggered: 0
   wallJumpTriggered: 0
-  minJumpDist: 3.5
-  maxJumpDist: 4.5
+  minJumpVertDist: 3.5
+  maxJumpVertDist: 4.5
   jumpingTimer: 0
   maxJumpHorizDist: 8
   maxJumpHorizTime: 1
+  wallJumpVertSpeed: 10
+  wallJumpHorizSpeed: 0
+  wallJumpVertDist: 2
+  wallJumpHorizDist: 7
+  wallJumpHorizTime: 1
   maxCoyoteTime: 0.25
   coyoteTimer: 0
   coyoteTimerEnabled: 0
@@ -12944,6 +12949,7 @@ MonoBehaviour:
     m_Bits: 8
   rayLength: 0.3
   isGrounded: 0
+  isJumping: 0
   isRayGroundDetected: 0
   isRecentlyJumping: 0
   wallLeftCheck: {fileID: 823436958}
@@ -12953,7 +12959,6 @@ MonoBehaviour:
     m_Bits: 256
   rayWallLength: 0.5
   isWallDetected: 0
-  wallJumpForce: 20
   isRayWallDetected: 0
   isRecentlyWallJumping: 0
   platformLayer:
