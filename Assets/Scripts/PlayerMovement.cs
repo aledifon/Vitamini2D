@@ -83,6 +83,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float rayWallLength;    //Raycast Wall Fwd Length
     [SerializeField] bool isWallDetected;       //Wall Fwd detection flag
     [SerializeField] float wallJumpForce;       // Jumping applied Force
+    Vector2 wallForce;
     Vector2 rayWallOrigin;
     Vector2 rayWallDir;
     [SerializeField] private bool isRayWallDetected;       // Aux. Ray Wall var
@@ -188,7 +189,11 @@ public class PlayerMovement : MonoBehaviour
         Gizmos.DrawRay(rayWallOrigin + (Vector2.down * 0.01f), rayWallDir * rayWallLength);
         Gizmos.DrawRay(rayWallOrigin + (Vector2.down * 0.02f), rayWallDir * rayWallLength);
     }
-
+    void EnableSlowMotion()
+    {
+        Time.timeScale = 0.2f; // Velocidad al 20%
+        Time.fixedDeltaTime = 0.02f * Time.timeScale; // Ajustar física
+    }
     void Awake()
     {
         // ONLY FOR RECORDING
@@ -203,7 +208,10 @@ public class PlayerMovement : MonoBehaviour
         audioSource = GetComponent<AudioSource>();
 
         NumAcorn = 0;
-        textAcornUI.text = NumAcorn.ToString();        
+        textAcornUI.text = NumAcorn.ToString();
+
+        // Just for debugging
+        //EnableSlowMotion();
     }
     private void Update()
     {                       
@@ -304,6 +312,8 @@ public class PlayerMovement : MonoBehaviour
                 }                
                 else if (rb2D.velocity.y < Mathf.Epsilon)
                     currentState = PlayerState.Falling;
+
+                //Debug.Log("From Idle state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Running:  
                 if (isGrounded)
@@ -318,11 +328,13 @@ public class PlayerMovement : MonoBehaviour
                     }                                            
                 }
                 else if (rb2D.velocity.y < Mathf.Epsilon)
-                    currentState = PlayerState.Falling;                
+                    currentState = PlayerState.Falling;
+
+                //Debug.Log("From Running state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Jumping:
             case PlayerState.WallJumping:
-                if (isGrounded)
+                if (isGrounded && rb2D.velocity.y <= 0)
                 {
                     //if (/*!jumpPressed &&*/ direction.x == 0)
                     //    currentState = PlayerState.Idle;
@@ -333,14 +345,15 @@ public class PlayerMovement : MonoBehaviour
                 }
                 else
                 {                    
-                    if (isWallDetected)
+                    /*if (isWallDetected)
                     {
                         currentState = PlayerState.WallBraking;
                         Debug.Log("Switched to WallBraking state");
                     }                        
-                    else if (!isRecentlyJumping && rb2D.velocity.y < Mathf.Epsilon)                    
+                    else*/ if (!isRecentlyJumping && rb2D.velocity.y < Mathf.Epsilon)                    
                         currentState = PlayerState.Falling;                                                                
-                }                
+                }
+                //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Falling:
                 if (jumpTriggered)
@@ -360,7 +373,10 @@ public class PlayerMovement : MonoBehaviour
                 else if (isWallDetected)
                 {                
                     currentState = PlayerState.WallBraking;
-                }                
+                    Debug.Log("Switched to WallBraking state");
+                }
+
+                //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.WallBraking:
                 if (isGrounded)
@@ -382,9 +398,10 @@ public class PlayerMovement : MonoBehaviour
                     {
                         TriggerWallJump();
                         currentState = PlayerState.WallJumping;
-                        Debug.Log("Switched to WallJumping state");
+                        //Debug.Log("Switched to WallJumping state");
                     }                        
                 }
+                Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             default:
                 // Default logic
@@ -633,9 +650,13 @@ public class PlayerMovement : MonoBehaviour
         //CalculateJumpTimes();               // In principle we'll use the same input that
                                             // we use for the normal Jump
 
-        Vector2 wallForce = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * wallJumpForce) + 
-                            (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * wallJumpForce);        
-        rb2D.AddForce(wallForce);
+        // Reset Rb velocity to avoid inconsistencies
+        rb2D.velocity = Vector2.zero;
+
+        wallForce = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * wallJumpForce) + 
+                            (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * wallJumpForce);
+        //rb2D.AddForce(wallForce, ForceMode2D.Impulse);
+        rb2D.velocity = wallForce;
 
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
@@ -724,7 +745,7 @@ public class PlayerMovement : MonoBehaviour
             //    targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
             //    break;
             case PlayerState.WallJumping:
-                targetVelocity = rb2D.velocity;
+                targetVelocity = wallForce;
                 break;
         }
 
@@ -746,10 +767,10 @@ public class PlayerMovement : MonoBehaviour
         {
             rb2D.velocity = new Vector2(0,rb2D.velocity.y);
         }
-        else if (currentState == PlayerState.WallJumping)
-        {
-            rb2D.velocity = targetVelocity;
-        }
+        //else if (currentState == PlayerState.WallJumping && !isRecentlyWallJumping)
+        //{            
+        //    rb2D.velocity = targetVelocity;
+        //}
         // Idle or Running States
         else
         {
@@ -763,7 +784,7 @@ public class PlayerMovement : MonoBehaviour
         //Gravity will be heavier when the player is falling down
         if (currentState == PlayerState.WallBraking)
         {            
-            rb2D.gravityScale = 1.2f;
+            rb2D.gravityScale = 0.5f;
         }        
         else if (currentState == PlayerState.Falling)
         {
