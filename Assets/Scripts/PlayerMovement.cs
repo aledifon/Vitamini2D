@@ -68,9 +68,10 @@ public class PlayerMovement : MonoBehaviour
     [Header("Raycast")]
     // Raycast Ground check
     [SerializeField] Transform[] groundChecks;  //Raycast origin point (Vitamini feet)
-    [SerializeField] LayerMask groundLayer;  //Ground Layer
-    [SerializeField] float rayLength;       //Raycast Length
-    [SerializeField] bool isGrounded;       //Ground touching flag
+    [SerializeField] LayerMask groundLayer;     //Ground Layer
+    [SerializeField] float rayLength;           //Raycast Length
+    [SerializeField] bool isGrounded;           //Ground touching flag
+    [SerializeField] bool isJumping;            //Jumping/Falling/WallJumping Flag
     [SerializeField] private bool isRayGroundDetected;       // Aux. Ray Ground var
     [SerializeField] private bool isRecentlyJumping;           // Aux. var 
     public bool IsGrounded => isGrounded;
@@ -83,7 +84,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] float rayWallLength;    //Raycast Wall Fwd Length
     [SerializeField] bool isWallDetected;       //Wall Fwd detection flag
     [SerializeField] float wallJumpForce;       // Jumping applied Force
-    Vector2 wallForce;
+    Vector2 wallSpeedVector;
     Vector2 rayWallOrigin;
     Vector2 rayWallDir;
     [SerializeField] private bool isRayWallDetected;       // Aux. Ray Wall var
@@ -235,34 +236,39 @@ public class PlayerMovement : MonoBehaviour
         // Controls if the player is on the elevator
         //Elevator();
 
-        // Update the isGrounded & isWallDetected Values
+        // Update the isGrounded, isWallDetected & isJumping Flags
         isGrounded = isRayGroundDetected && !isRecentlyJumping;
         isWallDetected = isRayWallDetected && !isRecentlyWallJumping;
+        isJumping = (currentState == PlayerState.Jumping || 
+                    currentState == PlayerState.Falling ||
+                    currentState == PlayerState.WallJumping);
 
-        // Check Jump Input Buffer
+        // Jump Input Buffer
         CheckJumpTrigger();
         if (jumpBufferTimerEnabled)
             UdpateJumpBufferTimer();
 
-        // Update the player state
-        UpdatePlayerState();
-
         // Coyote Timer
-        CoyoteTimerCheck();
+        CheckCoyoteTimer();
         if (coyoteTimerEnabled)
             UdpateCoyoteTimer();
 
+        // Update the player state
+        UpdatePlayerState();
+
+        // Jumping Timer
+        if (isJumping)        
+            UpdateJumpTimer();
+
+        // Update the Horiz & Vertical Player's Speed
+        UpdateHorizSpeed();
+        UpdateVerticalSpeed();                    
+        // Update the Player's Movement
+        UpdatePlayerSpeed();
+
         // Update the player's gravity when falling down
         ChangeGravity();
-
-        // Jump & Movement calculations
-        if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
-        {
-            jumpingTimer += Time.fixedDeltaTime;
-            CalculateJumpSpeedMovement();            
-        }
-        UpdateMovement();
-
+       
         // Jumping Animation
         AnimatingJumpìng();
     }
@@ -334,25 +340,10 @@ public class PlayerMovement : MonoBehaviour
                 break;
             case PlayerState.Jumping:
             case PlayerState.WallJumping:
-                if (isGrounded && rb2D.velocity.y <= 0)
-                {
-                    //if (/*!jumpPressed &&*/ direction.x == 0)
-                    //    currentState = PlayerState.Idle;
-                    //else if (/*!jumpPressed &&*/ direction.x != 0)
-                    //    currentState = PlayerState.Running;
-
-                    currentState = PlayerState.Idle;
-                }
-                else
-                {                    
-                    /*if (isWallDetected)
-                    {
-                        currentState = PlayerState.WallBraking;
-                        Debug.Log("Switched to WallBraking state");
-                    }                        
-                    else*/ if (!isRecentlyJumping && rb2D.velocity.y < Mathf.Epsilon)                    
-                        currentState = PlayerState.Falling;                                                                
-                }
+                if (rb2D.velocity.y < 0 && !isRecentlyJumping) 
+                {                                        
+                    currentState = PlayerState.Falling;                    
+                }                
                 //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Falling:
@@ -373,7 +364,7 @@ public class PlayerMovement : MonoBehaviour
                 else if (isWallDetected)
                 {                
                     currentState = PlayerState.WallBraking;
-                    Debug.Log("Switched to WallBraking state");
+                    //Debug.Log("Switched to WallBraking state");
                 }
 
                 //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
@@ -401,7 +392,7 @@ public class PlayerMovement : MonoBehaviour
                         //Debug.Log("Switched to WallJumping state");
                     }                        
                 }
-                Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             default:
                 // Default logic
@@ -497,7 +488,7 @@ public class PlayerMovement : MonoBehaviour
             coyoteTimer = 0f;
         }                           
     }
-    private void CoyoteTimerCheck()
+    private void CheckCoyoteTimer()
     {        
         // Coyote Timer will be triggered when the player stop touching the ground
         if ((wasGrounded && !isGrounded) /*&& currentState == PlayerState.Falling*/ && !coyoteTimerEnabled) 
@@ -569,28 +560,41 @@ public class PlayerMovement : MonoBehaviour
     {        
         // If a possible Normal Jump is detected (Either through isGrounded or through CoyoteTime)
         if((isGrounded || coyoteTimerEnabled) && jumpBufferTimerEnabled)
-        {            
-            // Set the Jumping flags & Reset the Jumping Timer
-            jumpTriggered = true;            
-            jumpingTimer = 0;
-
-            ResetJumpBufferTimer();            
-
+        {
+            // Reset the Jumping Buffer Timer
+            ResetJumpBufferTimer();
+            // Reset the Jumping Timer
+            ResetJumpTimer();
             //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
-            jumpHorizSpeed = maxJumpHorizDist / maxJumpHorizTime;
+            jumpHorizSpeed = maxJumpHorizDist / 
+                            maxJumpHorizTime;
+
+            // Register a Jumping Trigger Request
+            jumpTriggered = true;
         }
         // Otherwise, if a Wall Jump is detected (wallFwdDetected by raycastWallFwd)
         else if ((!isGrounded && isWallDetected) && jumpBufferTimerEnabled)
         {
-            // Set the Wall Jumping flags & Reset the Jumping Timer
-            wallJumpTriggered = true;
-            //jumpingTimer = 0;               // Will be used to calculate the
-                                            // min/maxJumpingTimes on CalculateJumpSpeedMovement
+            // Reset the Jumping Buffer Timer             
             ResetJumpBufferTimer();
+            // Reset the Jumping Timer
+            // (Will be used to calculate the min/maxJumpingTimes on CalculateJumpSpeedMovement)  
+            ResetJumpTimer();
+            //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time            
+            jumpHorizSpeed = maxJumpHorizDist /
+                            maxJumpHorizTime;
 
-            //jumpHorizSpeed = maxJumpHorizDist /     // In principle will be used this Jump. Horiz. Speed.
-            //                maxJumpHorizTime;
+            // Register a Wall Jumping Trigger Request
+            wallJumpTriggered = true;
         }
+    }
+    private void UpdateJumpTimer()
+    {
+        jumpingTimer += Time.fixedDeltaTime;
+    }
+    private void ResetJumpTimer()
+    {
+        jumpingTimer = 0;
     }
     #endregion
     #endregion
@@ -606,7 +610,7 @@ public class PlayerMovement : MonoBehaviour
     }
     #endregion
 
-    #region Movement
+    #region Jumping
     void TriggerJump()
     {
         // Clear the jumpTriggered Flag (Avoid to enter on undesired States)
@@ -615,7 +619,7 @@ public class PlayerMovement : MonoBehaviour
         // Enable the isJumpTriggered for a certain time;
         isRecentlyJumping = true;
         //Invoke(nameof(DisableIsJumpTriggered),0.2f);
-        StartCoroutine(nameof(DisableJumpTriggerFlag));        
+        StartCoroutine(nameof(DisableJumpTriggerFlag));
 
         // Fix Player's position due to corner detection
         if (cornerDetected == CornerDetected.CornerLeft)
@@ -628,7 +632,7 @@ public class PlayerMovement : MonoBehaviour
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
     }
-    IEnumerator DisableJumpTriggerFlag() 
+    IEnumerator DisableJumpTriggerFlag()
     {
         yield return new WaitForSeconds(0.2f);
         isRecentlyJumping = false;
@@ -648,22 +652,25 @@ public class PlayerMovement : MonoBehaviour
         StartCoroutine(nameof(DisableWallJumpTriggerFlag));
 
         //CalculateJumpTimes();               // In principle we'll use the same input that
-                                            // we use for the normal Jump
+        // we use for the normal Jump
 
         // Reset Rb velocity to avoid inconsistencies
         rb2D.velocity = Vector2.zero;
 
-        wallForce = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * wallJumpForce) + 
-                            (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * wallJumpForce);
+        //wallSpeedVector = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * wallJumpForce) +
+        //                    (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * wallJumpForce);
+        
+        wallSpeedVector = (-rayWallDir * Mathf.Cos(Mathf.Deg2Rad * 30) * jumpHorizSpeed) +
+                            (Vector2.up * Mathf.Sin(Mathf.Deg2Rad * 30) * jumpHorizSpeed);
         //rb2D.AddForce(wallForce, ForceMode2D.Impulse);
-        rb2D.velocity = wallForce;
+        //rb2D.velocity = wallSpeedVector;
 
         // Trigger Jump Sound
         audioSource.PlayOneShot(jumpAudioFx);
 
         // Flip Sprite
         //spriteRenderer.flipX = !spriteRenderer.flipX;
-    }    
+    }
     IEnumerator DisableWallJumpTriggerFlag()
     {
         yield return new WaitForSeconds(0.2f);
@@ -694,91 +701,203 @@ public class PlayerMovement : MonoBehaviour
 
         // Max Jumping Time Correction
         maxJumpingTime += 0.03f;
-    }    
-    void CalculateJumpSpeedMovement()
-    {                
-        // Calculate the Player's Jump Speed component 
-        if (currentState == PlayerState.Jumping)
-        {            
-            // Jump button released and elapsed min Time
-            if (jumpingTimer >= minJumpingTime)
-            {
-                // Stop giving jump speed;            
-                if (!jumpPressed || jumpingTimer >= maxJumpingTime)
-                {
-                    rb2DJumpVelY *= 0.5f;
-                }
-                else
-                    rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
-            }
-            else
-            {
-                // Jumping force through velocity
-                rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
-                //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
-            }
-        }
-        else if (currentState == PlayerState.Falling)
-        {
-            rb2DJumpVelY = rb2D.velocity.y;            
-        }            
+    }
+    #endregion
 
-        // Jumping force through Add Force
-        //rb2D.AddForce(Vector2.up*jumpForce);                
-    }    
-    void UpdateMovement()
-    {                        
+    #region Movement
+    void UpdateHorizSpeed()
+    {
         switch (currentState)
         {
             case PlayerState.Idle:
             case PlayerState.Running:
                 rb2DDirVelX = direction.x * speed;
-                targetVelocity = new Vector2(rb2DDirVelX, rb2D.velocity.y);
                 break;
             case PlayerState.Jumping:
             case PlayerState.Falling:
-                rb2DDirVelX = direction.x * jumpHorizSpeed;                                                
-                targetVelocity = new Vector2(rb2DDirVelX, rb2DJumpVelY);
+                rb2DDirVelX = direction.x * jumpHorizSpeed;
                 break;
-            //case PlayerState.Falling:
-            //    playerDirVelocity *= 0.8f;
-            //    targetVelocity = new Vector2(playerDirVelocity.x, rb2D.velocity.y);
-            //    break;
             case PlayerState.WallJumping:
-                targetVelocity = wallForce;
+                rb2DDirVelX = wallSpeedVector.x;
                 break;
-        }
-
-        // Updates the correspondent new velocity
-        // Jumping or Falling States
-        if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
-        {
-            // Don't smooth the Y-axis while jumping
-            //rb2D.velocity = new Vector2(
-            //                Mathf.SmoothDamp(rb2D.velocity.x, targetVelocity.x, ref dampVelocity.x, smoothTime),
-            //                targetVelocity.y);
-
-            rb2D.velocity = new Vector2(
-                            Mathf.Lerp(rb2D.velocity.x, targetVelocity.x, Time.fixedDeltaTime * lerpSpeed),
-                            targetVelocity.y);
-            //rb2D.velocity = targetVelocity;
-        }
-        else if (currentState == PlayerState.WallBraking)
-        {
-            rb2D.velocity = new Vector2(0,rb2D.velocity.y);
-        }
-        //else if (currentState == PlayerState.WallJumping && !isRecentlyWallJumping)
-        //{            
-        //    rb2D.velocity = targetVelocity;
-        //}
-        // Idle or Running States
-        else
-        {
-            // Smooth both axis on normal states
-            //rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);
-            rb2D.velocity = Vector2.Lerp(rb2D.velocity, targetVelocity, Time.fixedDeltaTime * lerpSpeed);
+            case PlayerState.WallBraking:
+                rb2DDirVelX = 0;
+                break;
+            default:
+                break;
         }
     }
+    void UpdateVerticalSpeed()
+    {
+        switch (currentState)
+        {
+            case PlayerState.Idle:
+            case PlayerState.Running:
+            case PlayerState.Falling:
+            case PlayerState.WallBraking:
+                rb2DJumpVelY = rb2D.velocity.y;
+                break;
+            case PlayerState.Jumping:
+                // Jump button released and elapsed min Time
+                if (jumpingTimer >= minJumpingTime)
+                {
+                    // Stop giving jump speed;            
+                    if (!jumpPressed || jumpingTimer >= maxJumpingTime)
+                    {
+                        rb2DJumpVelY *= 0.5f;
+                    }
+                    else
+                        rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
+                }
+                else
+                {
+                    // Jumping force through velocity
+                    rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
+                    //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+                }
+                break;            
+            case PlayerState.WallJumping:
+
+                // TO IMPLEMENT
+                // rb2DJumpVelY = wallSpeedVector.y; ???
+
+                break;
+            default:
+                break;
+        }
+
+        // Jumping force through Add Force
+        //rb2D.AddForce(Vector2.up*jumpForce);               
+    }    
+    void UpdatePlayerSpeed()
+    {
+        targetVelocity = new Vector2(rb2DDirVelX, rb2DJumpVelY);
+
+        switch (currentState)
+        {
+            case PlayerState.Idle:
+            case PlayerState.Running:
+                // Smooth both axis on normal states
+                //rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);
+                rb2D.velocity = Vector2.Lerp(rb2D.velocity, targetVelocity, Time.fixedDeltaTime * lerpSpeed);
+                break;
+            case PlayerState.Jumping:
+            case PlayerState.Falling:
+                // Don't smooth the Y-axis while jumping
+                //rb2D.velocity = new Vector2(
+                //                Mathf.SmoothDamp(rb2D.velocity.x, targetVelocity.x, ref dampVelocity.x, smoothTime),
+                //                targetVelocity.y);
+
+                rb2D.velocity = new Vector2(
+                                Mathf.Lerp(rb2D.velocity.x, targetVelocity.x, Time.fixedDeltaTime * lerpSpeed),
+                                targetVelocity.y);
+                //rb2D.velocity = targetVelocity;
+                break;
+            case PlayerState.WallBraking:
+                rb2D.velocity = targetVelocity;
+                // Try the same as on Idle and Running States? (To check the feeling)
+                //rb2D.velocity = Vector2.Lerp(rb2D.velocity, targetVelocity, Time.fixedDeltaTime * lerpSpeed);
+                break;
+            case PlayerState.WallJumping:
+                if (!isRecentlyWallJumping)
+                {
+                    rb2D.velocity = targetVelocity;
+                    // Try the same as on Jumping and Falling States? (To check the feeling)
+                    //rb2D.velocity = new Vector2(
+                    //        Mathf.Lerp(rb2D.velocity.x, targetVelocity.x, Time.fixedDeltaTime * lerpSpeed),
+                    //        targetVelocity.y);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    //void UpdateVerticalSpeedOld()
+    //{        
+    //    // Calculate the Player's Jump Speed component 
+    //    if (currentState == PlayerState.Jumping)
+    //    {
+    //        // Jump button released and elapsed min Time
+    //        if (jumpingTimer >= minJumpingTime)
+    //        {
+    //            // Stop giving jump speed;            
+    //            if (!jumpPressed || jumpingTimer >= maxJumpingTime)
+    //            {
+    //                rb2DJumpVelY *= 0.5f;
+    //            }
+    //            else
+    //                rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
+    //        }
+    //        else
+    //        {
+    //            // Jumping force through velocity
+    //            rb2DJumpVelY = Vector2.up.y * jumpVertSpeed;
+    //            //rb2D.velocity = new Vector2(rb2D.velocity.x,rb2DJumpVelY);
+    //        }
+    //    }
+    //    else if (currentState == PlayerState.WallJumping)
+    //    {
+    //        // TO IMPLEMENT
+    //    }
+    //    else if (currentState == PlayerState.Falling)
+    //    {
+    //        rb2DJumpVelY = rb2D.velocity.y;
+    //    }
+
+    //    // Jumping force through Add Force
+    //    //rb2D.AddForce(Vector2.up*jumpForce);                
+    //}
+
+    //void UpdatePlayerSpeedOld()
+    //{                        
+    //    switch (currentState)
+    //    {
+    //        case PlayerState.Idle:
+    //        case PlayerState.Running:
+    //            rb2DDirVelX = direction.x * speed;
+    //            targetVelocity = new Vector2(rb2DDirVelX, rb2D.velocity.y);
+    //            break;
+    //        case PlayerState.Jumping:
+    //        case PlayerState.Falling:
+    //            rb2DDirVelX = direction.x * jumpHorizSpeed;                                                
+    //            targetVelocity = new Vector2(rb2DDirVelX, rb2DJumpVelY);
+    //            break;            
+    //        case PlayerState.WallJumping:
+    //            targetVelocity = wallSpeedVector;
+    //            break;
+    //    }
+
+    //    // Updates the correspondent new velocity
+    //    // Jumping or Falling States
+    //    if (currentState == PlayerState.Jumping || currentState == PlayerState.Falling)
+    //    {
+    //        // Don't smooth the Y-axis while jumping
+    //        //rb2D.velocity = new Vector2(
+    //        //                Mathf.SmoothDamp(rb2D.velocity.x, targetVelocity.x, ref dampVelocity.x, smoothTime),
+    //        //                targetVelocity.y);
+
+    //        rb2D.velocity = new Vector2(
+    //                        Mathf.Lerp(rb2D.velocity.x, targetVelocity.x, Time.fixedDeltaTime * lerpSpeed),
+    //                        targetVelocity.y);
+    //        //rb2D.velocity = targetVelocity;
+    //    }
+    //    else if (currentState == PlayerState.WallBraking)
+    //    {
+    //        rb2D.velocity = new Vector2(0,rb2D.velocity.y);
+    //    }
+    //    //else if (currentState == PlayerState.WallJumping && !isRecentlyWallJumping)
+    //    //{            
+    //    //    rb2D.velocity = targetVelocity;
+    //    //}
+    //    // Idle or Running States
+    //    else
+    //    {
+    //        // Smooth both axis on normal states
+    //        //rb2D.velocity = Vector2.SmoothDamp(rb2D.velocity, targetVelocity, ref dampVelocity, smoothTime);
+    //        rb2D.velocity = Vector2.Lerp(rb2D.velocity, targetVelocity, Time.fixedDeltaTime * lerpSpeed);
+    //    }
+    //}
     private void ChangeGravity()
     {
         //Gravity will be heavier when the player is falling down

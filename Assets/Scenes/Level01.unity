@@ -12930,6 +12930,7 @@ MonoBehaviour:
   rayCornerLength: 2.8
   jumpBufferTime: 0.2
   jumpBufferTimer: 0
+  jumpBufferTimerEnabled: 0
   textAcornUI: {fileID: 1428549074}
   elevatorLayer:
     serializedVersion: 2
@@ -12944,7 +12945,7 @@ MonoBehaviour:
   rayLength: 0.3
   isGrounded: 0
   isRayGroundDetected: 0
-  isJumpTriggered: 0
+  isRecentlyJumping: 0
   wallLeftCheck: {fileID: 823436958}
   wallRightCheck: {fileID: 2049951934}
   wallLayer:
@@ -12952,9 +12953,9 @@ MonoBehaviour:
     m_Bits: 256
   rayWallLength: 0.5
   isWallDetected: 0
-  wallJumpForce: 350
+  wallJumpForce: 20
   isRayWallDetected: 0
-  isWallJumpTriggered: 0
+  isRecentlyWallJumping: 0
   platformLayer:
     serializedVersion: 2
     m_Bits: 512
