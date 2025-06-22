@@ -129,11 +129,12 @@ public class PlayerMovement : MonoBehaviour
     // GO Components
     Rigidbody2D rb2D;
     // Movement vars.
-    float horizontal;
+    float inputX;
     //Vector2 inputPlayerVelocity;    // Velocity given by the player's input
     Vector2 targetVelocity;          // Desired target player Speed(Velocity Movement type through rb2D)
     Vector2 dampVelocity;            // Player's current speed storage (Velocity Movement type through r
     Vector2 direction;              // To handle the direction with the New Input System
+    float inputDirDeadZone = 0.2f;  // dead Zone area to not take into account (to fix Analog Stick direction bugs)
 
     float rb2DDirVelX;    
     float rb2DJumpVelY;
@@ -276,9 +277,9 @@ public class PlayerMovement : MonoBehaviour
 
         // Update the player's gravity when falling down
         ChangeGravity();
-       
+
         // Jumping Animation
-        //AnimatingJumpìng();
+        AnimatingJumpìng();
     }
     // Collisions
     private void OnCollisionEnter2D(Collision2D collision)
@@ -315,7 +316,7 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Idle:
                 if (isGrounded)
                 {
-                    if (direction.x != 0)
+                    if (inputX != 0)
                         currentState = PlayerState.Running;
                     //else if (!isGrounded && rb2D.velocity.y > 0)
                     else if (jumpTriggered)
@@ -332,7 +333,7 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.Running:  
                 if (isGrounded)
                 {
-                    if (direction.x == 0)
+                    if (inputX == 0)
                         currentState = PlayerState.Idle;
                     //else if (!isGrounded && rb2D.velocity.y > 0)
                     else if (jumpTriggered)
@@ -347,66 +348,80 @@ public class PlayerMovement : MonoBehaviour
                 //Debug.Log("From Running state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Jumping:
-                if (rb2D.velocity.y < 0 && !isRecentlyJumping)
+                if (wallJumpTriggered)
+                {
+                    TriggerWallJump();
+                    currentState = PlayerState.WallJumping;
+                    Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                }
+                else if (rb2D.velocity.y < 0 && !isRecentlyJumping)
                 {
                     currentState = PlayerState.Falling;
-                }
-                //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                }                
                 break;
             case PlayerState.WallJumping:
-                if (rb2D.velocity.y < 0 && !isRecentlyWallJumping) 
+                if (rb2D.velocity.y > 0 && inputX != 0)
+                {
+                    currentState = PlayerState.Jumping;
+                    Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                }
+                else if (rb2D.velocity.y < 0 && !isRecentlyWallJumping) 
                 {                                        
-                    currentState = PlayerState.Falling;                    
+                    currentState = PlayerState.Falling;
+                    Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }                
-                //Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Falling:
                 if (jumpTriggered)
                 {
                     TriggerJump();
-                    currentState = PlayerState.Jumping;                    
+                    currentState = PlayerState.Jumping;
+                    Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }                    
                 else if (isGrounded)
                 {
-                    //if (/*!jumpPressed &&*/ direction.x == 0)
+                    //if (/*!jumpPressed &&*/ inputX == 0)
                     //    currentState = PlayerState.Idle;
-                    //else if (/*!jumpPressed &&*/ direction.x != 0)
+                    //else if (/*!jumpPressed &&*/ inputX != 0)
                     //    currentState = PlayerState.Running;
 
                     currentState = PlayerState.Idle;
+                    //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }
                 else if (isWallDetected)
                 {                
                     currentState = PlayerState.WallBraking;
                     //Debug.Log("Switched to WallBraking state");
-                }
-
-                //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                }                
                 break;
             case PlayerState.WallBraking:
                 if (isGrounded)
                 {
-                    //if (/*!jumpPressed &&*/ direction.x == 0)
+                    //if (/*!jumpPressed &&*/ inputX == 0)
                     //    currentState = PlayerState.Idle;
-                    //else if (/*!jumpPressed &&*/ direction.x != 0)
+                    //else if (/*!jumpPressed &&*/ inputX != 0)
                     //    currentState = PlayerState.Running;
 
                     currentState = PlayerState.Idle;
+                    //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }
                 else
                 {
                     if (!isWallDetected)
                     {
                         currentState = PlayerState.Falling;
+                        //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                     }
                     else if(wallJumpTriggered)
                     {
                         TriggerWallJump();
-                        currentState = PlayerState.WallJumping;
-                        //Debug.Log("Switched to WallJumping state");
+                        currentState = PlayerState.WallJumping;                        
+                        //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                     }                        
                 }
-                //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                
                 break;
             default:
                 // Default logic
@@ -542,11 +557,15 @@ public class PlayerMovement : MonoBehaviour
     }
     public void MoveActionInput(InputAction.CallbackContext context)
     {
-        direction = context.ReadValue<Vector2>();
-        //targetVelocity = new Vector2(direction.x * speed, rb2D.velocity.y);
+        direction = context.ReadValue<Vector2>();                
+
+        // Apply the deadZone to the Horizontal movement        
+        inputX = Mathf.Abs(direction.x) > inputDirDeadZone ? direction.x : 0f;
+        //inputX = direction.x;
+
         // Flip the player sprite & change the animations State
-        FlipSprite(direction.x);       
-        AnimatingRunning(direction.x);
+        FlipSprite(inputX, inputDirDeadZone);       
+        AnimatingRunning(inputX);
     }
     #region Jumping Buffer    
     private void UdpateJumpBufferTimer()
@@ -685,7 +704,7 @@ public class PlayerMovement : MonoBehaviour
         audioSource.PlayOneShot(jumpAudioFx);
 
         // Flip Sprite
-        //spriteRenderer.flipX = !spriteRenderer.flipX;
+        spriteRenderer.flipX = !spriteRenderer.flipX;
     }
     IEnumerator DisableWallJumpTriggerFlag()
     {
@@ -742,11 +761,11 @@ public class PlayerMovement : MonoBehaviour
         {
             case PlayerState.Idle:
             case PlayerState.Running:
-                rb2DDirVelX = direction.x * speed;
+                rb2DDirVelX = inputX * speed;
                 break;
             case PlayerState.Jumping:
             case PlayerState.Falling:
-                rb2DDirVelX = direction.x * jumpHorizSpeed;
+                rb2DDirVelX = inputX * jumpHorizSpeed;
                 break;
             case PlayerState.WallJumping:                
                 // X-velocity starts decreasing after a certain time
@@ -890,12 +909,12 @@ public class PlayerMovement : MonoBehaviour
     //    {
     //        case PlayerState.Idle:
     //        case PlayerState.Running:
-    //            rb2DDirVelX = direction.x * speed;
+    //            rb2DDirVelX = inputX * speed;
     //            targetVelocity = new Vector2(rb2DDirVelX, rb2D.velocity.y);
     //            break;
     //        case PlayerState.Jumping:
     //        case PlayerState.Falling:
-    //            rb2DDirVelX = direction.x * jumpHorizSpeed;                                                
+    //            rb2DDirVelX = inputX * jumpHorizSpeed;                                                
     //            targetVelocity = new Vector2(rb2DDirVelX, rb2DJumpVelY);
     //            break;            
     //        case PlayerState.WallJumping:
@@ -977,12 +996,17 @@ public class PlayerMovement : MonoBehaviour
 
     #region Sprite & Animations
     // Flip the Player sprite in function of its movement
-    void FlipSprite(float horizontal)
+    void FlipSprite(float horizontal, float deadZone)
     {
-        if (horizontal < 0 /*&& rb2D.velocity.x < 0*/)
-            spriteRenderer.flipX = true;
-        else if (horizontal > 0 /*&& rb2D.velocity.x > 0*/)
-            spriteRenderer.flipX = false;              
+        // Evitar que el sprite se gire si acabamos de hacer wall jump
+        if (isRecentlyWallJumping || currentState == PlayerState.WallBraking)
+            return;
+
+        //if (horizontal != 0)
+        //    spriteRenderer.flipX = horizontal < 0;
+
+        if (Mathf.Abs(horizontal) > deadZone)
+            spriteRenderer.flipX = horizontal < 0;
     }
     //void UpdateBoxCollider()
     //{
