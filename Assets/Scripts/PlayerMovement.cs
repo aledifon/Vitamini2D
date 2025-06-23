@@ -322,7 +322,8 @@ public class PlayerMovement : MonoBehaviour
                     else if (jumpTriggered)
                     {
                         TriggerJump();
-                        currentState = PlayerState.Jumping;                        
+                        currentState = PlayerState.Jumping;           
+                        Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                     }
                 }                
                 else if (rb2D.velocity.y < Mathf.Epsilon)
@@ -339,8 +340,9 @@ public class PlayerMovement : MonoBehaviour
                     else if (jumpTriggered)
                     {
                         TriggerJump();
-                        currentState = PlayerState.Jumping;                        
-                    }                                            
+                        currentState = PlayerState.Jumping;
+                        Debug.Log("From Running state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    }
                 }
                 else if (rb2D.velocity.y < Mathf.Epsilon)
                     currentState = PlayerState.Falling;
@@ -357,20 +359,19 @@ public class PlayerMovement : MonoBehaviour
                 else if (rb2D.velocity.y < 0 && !isRecentlyJumping)
                 {
                     currentState = PlayerState.Falling;
-                    //Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    Debug.Log("From Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }                
                 break;
             case PlayerState.WallJumping:
                 if (rb2D.velocity.y > 0 && inputX != 0)
                 {
-                    currentState = PlayerState.Jumping;
-                    Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    currentState = PlayerState.Jumping;                    
                 }
                 else if (rb2D.velocity.y < 0 && !isRecentlyWallJumping) 
                 {                                        
-                    currentState = PlayerState.Falling;
-                    Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
-                }                
+                    currentState = PlayerState.Falling;                    
+                }
+                //Debug.Log("From Wall Jumping state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             case PlayerState.Falling:
                 if (jumpTriggered)
@@ -387,13 +388,12 @@ public class PlayerMovement : MonoBehaviour
                     //    currentState = PlayerState.Running;
 
                     currentState = PlayerState.Idle;
-                    //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }
                 else if (isWallDetected)
                 {                
                     currentState = PlayerState.WallBraking;
-                    //Debug.Log("Switched to WallBraking state");
-                    //Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    Debug.Log("From Falling state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 }                
                 break;
             case PlayerState.WallBraking:
@@ -404,24 +404,21 @@ public class PlayerMovement : MonoBehaviour
                     //else if (/*!jumpPressed &&*/ inputX != 0)
                     //    currentState = PlayerState.Running;
 
-                    currentState = PlayerState.Idle;
-                    //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                    currentState = PlayerState.Idle;                    
                 }
                 else
                 {
                     if (!isWallDetected)
                     {
-                        currentState = PlayerState.Falling;
-                        //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                        currentState = PlayerState.Falling;                        
                     }
                     else if(wallJumpTriggered)
                     {
                         TriggerWallJump();
-                        currentState = PlayerState.WallJumping;                        
-                        //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
+                        currentState = PlayerState.WallJumping;                                                
                     }                        
                 }
-                
+                //Debug.Log("From WallBraking state to " + currentState + ". Time: " + (Time.realtimeSinceStartup * 1000f) + "ms");
                 break;
             default:
                 // Default logic
@@ -513,14 +510,18 @@ public class PlayerMovement : MonoBehaviour
         // Reset Coyote Timer
         if (coyoteTimer >= maxCoyoteTime)
         {
-            coyoteTimerEnabled = false;
-            coyoteTimer = 0f;
+            ResetCoyoteTimer();
         }                           
+    }
+    private void ResetCoyoteTimer()
+    {
+        coyoteTimerEnabled = false;
+        coyoteTimer = 0f;
     }
     private void CheckCoyoteTimer()
     {        
         // Coyote Timer will be triggered when the player stop touching the ground
-        if ((wasGrounded && !isGrounded) /*&& currentState == PlayerState.Falling*/ && !coyoteTimerEnabled) 
+        if ((wasGrounded && !isGrounded) && currentState != PlayerState.Jumping && !coyoteTimerEnabled) 
         {
             coyoteTimerEnabled = true;
             coyoteTimer = 0f;
@@ -593,11 +594,13 @@ public class PlayerMovement : MonoBehaviour
     {        
         // If a possible Normal Jump is detected (Either through isGrounded or through CoyoteTime)
         if((isGrounded || coyoteTimerEnabled) && jumpBufferTimerEnabled)
-        {
+        {            
             // Reset the Jumping Buffer Timer
             ResetJumpBufferTimer();
             // Reset the Jumping Timer
             ResetJumpTimer();
+            // Reset the Coyote Timer
+            ResetCoyoteTimer();
             //Set the Jumping Horizontal Speed in func. of the max Horiz Jump Distance and the Max Jump Horiz time
             jumpHorizSpeed = maxJumpHorizDist / 
                             maxJumpHorizTime;
@@ -647,8 +650,8 @@ public class PlayerMovement : MonoBehaviour
     #region Jumping
     void TriggerJump()
     {        
-        // Clear the jumpTriggered Flag (Avoid to enter on undesired States)
-        jumpTriggered = false;
+        // Clear the jumpTriggered Flag & Reset the Coyote Timer (Avoid to enter on undesired States)
+        jumpTriggered = false;        
 
         // Enable the isJumpTriggered for a certain time;
         isRecentlyJumping = true;
@@ -806,6 +809,9 @@ public class PlayerMovement : MonoBehaviour
                     if (!jumpPressed || jumpingTimer >= maxJumpingTime)
                     {
                         rb2DJumpVelY *= 0.5f;
+
+                        //TEST
+                        jumpingTimer = maxJumpingTime;       // --> FORCE TO MAX_TIME for avoiding to detect false jumps
                     }
                     else
                     {
